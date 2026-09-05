@@ -48,6 +48,7 @@ export default function Sidebar({
   onToggleRegistrations,
   registrations,
   onSelectRegistration,
+  onViewAllRegistrations,
 }) {
   return (
     <aside className="w-64 shrink-0 bg-white border-r border-gray-200 flex flex-col h-screen">
@@ -134,7 +135,7 @@ export default function Sidebar({
                 )
               })}
               <button
-                onClick={() => onNavigate('registrationsAll')}
+                onClick={onViewAllRegistrations}
                 className="w-full flex items-center gap-1.5 pl-9 pr-3 py-2 text-[13px] font-medium text-indigo-600 hover:text-indigo-700"
               >
                 View All Registrations <ArrowRight size={13} />

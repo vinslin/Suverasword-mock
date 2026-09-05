@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Home,
   Building2,
@@ -23,14 +23,7 @@ import QuickLinksPanel from './components/QuickLinksPanel'
 import RegistrationJourney from './components/RegistrationJourney'
 import Modal from './components/Modal'
 import PlaceholderPage from './components/PlaceholderPage'
-import { initialCompany, initialRegistrations } from './data/mockData'
-
-const STATUS_CYCLE = {
-  'Not Started': 'In Progress',
-  Pending: 'In Progress',
-  'In Progress': 'Completed',
-  Completed: 'Completed',
-}
+import { getCompany, getRegistrations, advanceRegistration, updateCompany } from './lib/api'
 
 const statusMeta = {
   Completed: { icon: CheckCircle2, className: 'text-emerald-500' },
@@ -97,25 +90,43 @@ const placeholderMeta = {
 export default function App() {
   const [activeNav, setActiveNav] = useState('assistant')
   const [registrationsOpen, setRegistrationsOpen] = useState(true)
-  const [registrations, setRegistrations] = useState(initialRegistrations)
-  const [company, setCompany] = useState(initialCompany)
-  const [journeyStep, setJourneyStep] = useState(3)
+  const [registrations, setRegistrations] = useState([])
+  const [company, setCompany] = useState(null)
+  const [companyChecked, setCompanyChecked] = useState(false)
+  const [loadError, setLoadError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState('15 May 2024 · 10:04 AM')
   const [refreshing, setRefreshing] = useState(false)
   const [modal, setModal] = useState(null)
 
-  function handleAdvanceRegistration(id) {
-    setRegistrations((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: STATUS_CYCLE[r.status],
-              date: STATUS_CYCLE[r.status] === 'Completed' ? '28 Aug 2026' : r.date,
-            }
-          : r,
-      ),
-    )
+  useEffect(() => {
+    async function load() {
+      try {
+        const registrationsData = await getRegistrations()
+        setRegistrations(registrationsData)
+      } catch (err) {
+        setLoadError(err.message || 'Failed to load company data')
+        return
+      }
+
+      try {
+        const companyData = await getCompany()
+        setCompany(companyData)
+      } catch (err) {
+        if (err.status !== 404) {
+          setLoadError(err.message || 'Failed to load company data')
+          return
+        }
+        // 404 just means no company has been created yet — not an error.
+      }
+
+      setCompanyChecked(true)
+    }
+    load()
+  }, [])
+
+  async function handleAdvanceRegistration(id) {
+    const updated = await advanceRegistration(id)
+    setRegistrations((prev) => prev.map((r) => (r.id === id ? updated : r)))
   }
 
   function handleRefresh() {
@@ -131,6 +142,7 @@ export default function App() {
   }
 
   function handleDownloadGuide() {
+    if (!company) return
     const lines = [
       `${company.name} — Registration Guide`,
       `Generated: ${new Date().toLocaleString('en-IN')}`,
@@ -144,7 +156,7 @@ export default function App() {
       'Registrations Status:',
       ...registrations.map((r) => `  - ${r.name}: ${r.status}${r.detail ? ` (${r.detail})` : ''}`),
       '',
-      `Current Journey Step: ${journeyStep} of 8`,
+      `Current Journey Step: ${company.journeyStep} of 8`,
     ]
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -157,18 +169,36 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
-  function handleProceedName() {
-    setJourneyStep((s) => Math.max(s, 4))
-    setCompany((c) => ({ ...c, statusTag: 'Name Reserved' }))
+  function handleCompanyUpdated(nextCompany) {
+    setCompany(nextCompany)
   }
 
-  function handleReserveName(name) {
-    setCompany((c) => ({ ...c, name, statusTag: 'Name Reserved' }))
+  function handleRegistrationsUpdated(nextRegistrations) {
+    setRegistrations(nextRegistrations)
   }
 
   const selectedRegistration = typeof modal === 'object' && modal?.type === 'registration'
     ? registrations.find((r) => r.id === modal.id)
     : null
+
+  if (loadError) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#f3f4f8] text-center px-6">
+        <div>
+          <div className="font-semibold text-gray-900 mb-1">Couldn't reach the backend</div>
+          <div className="text-[13.5px] text-gray-500">{loadError}</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!companyChecked) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#f3f4f8]">
+        <div className="text-[13.5px] text-gray-500">Loading company data…</div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f3f4f8]">
@@ -181,6 +211,10 @@ export default function App() {
         onSelectRegistration={(id) => {
           setActiveNav('assistant')
           setModal({ type: 'registration', id })
+        }}
+        onViewAllRegistrations={() => {
+          setActiveNav('assistant')
+          setModal({ type: 'allRegistrations' })
         }}
       />
 
@@ -197,24 +231,36 @@ export default function App() {
             <div className="flex-1 flex min-h-0">
               <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200">
                 <ChatAssistant
-                  onProceedName={handleProceedName}
-                  onSuggestNames={() => {}}
-                  onReserveName={handleReserveName}
+                  onCompanyUpdated={handleCompanyUpdated}
+                  onRegistrationsUpdated={handleRegistrationsUpdated}
                 />
               </div>
 
               <div className="w-[360px] shrink-0 overflow-y-auto px-5 py-5 space-y-4">
-                <CompanyOverview company={company} onViewDetails={() => setModal({ type: 'companyDetails' })} />
-                <RegistrationsTracker
-                  registrations={registrations}
-                  onAdvance={handleAdvanceRegistration}
-                  onViewAll={() => setModal({ type: 'allRegistrations' })}
-                />
+                {company ? (
+                  <>
+                    <CompanyOverview company={company} onViewDetails={() => setModal({ type: 'companyDetails' })} />
+                    <RegistrationsTracker
+                      registrations={registrations}
+                      onAdvance={handleAdvanceRegistration}
+                      onViewAll={() => setModal({ type: 'allRegistrations' })}
+                    />
+                  </>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+                    <Building2 size={22} className="mx-auto text-indigo-400 mb-2" />
+                    <div className="font-semibold text-gray-900 text-[14px] mb-1">No company yet</div>
+                    <p className="text-[12.5px] text-gray-500 leading-relaxed">
+                      Tell the assistant about your business — its name, type, and what it
+                      does — to get started.
+                    </p>
+                  </div>
+                )}
                 <QuickLinksPanel lastUpdated={lastUpdated} onRefresh={handleRefresh} refreshing={refreshing} />
               </div>
             </div>
 
-            <RegistrationJourney currentStep={journeyStep} />
+            {company && <RegistrationJourney currentStep={company.journeyStep} />}
           </>
         ) : (
           <PlaceholderPage {...(placeholderMeta[activeNav] ?? placeholderMeta.home)} />
@@ -223,7 +269,14 @@ export default function App() {
 
       {modal?.type === 'companyDetails' && (
         <Modal title="Company Details" onClose={() => setModal(null)}>
-          <CompanyDetailsForm company={company} onSave={(next) => { setCompany(next); setModal(null) }} />
+          <CompanyDetailsForm
+            company={company}
+            onSave={async (next) => {
+              const updated = await updateCompany(next)
+              setCompany(updated)
+              setModal(null)
+            }}
+          />
         </Modal>
       )}
 

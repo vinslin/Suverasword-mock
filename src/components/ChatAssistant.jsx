@@ -9,7 +9,8 @@ import {
   CircleX,
   Landmark,
 } from 'lucide-react'
-import { chatSeed, quickChips, cannedAnswers, webSearchSources } from '../data/mockData'
+import { quickChips } from '../data/mockData'
+import { getChatHistory, postChatMessage } from '../lib/api'
 
 function nowTime() {
   return new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
@@ -32,7 +33,7 @@ function WebSearchCard({ message }) {
       </div>
       <div className="text-[13px] text-gray-600 mb-3">{message.text}</div>
       <div className="flex flex-wrap gap-2">
-        {webSearchSources.map((s) => (
+        {(message.sources ?? []).map((s) => (
           <div
             key={s.name}
             className="flex items-center gap-2 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[12px]"
@@ -42,13 +43,10 @@ function WebSearchCard({ message }) {
             </span>
             <div>
               <div className="font-medium text-gray-800 leading-tight">{s.name}</div>
-              <div className="text-gray-400 leading-tight">{s.tag}</div>
+              <div className="text-gray-400 leading-tight truncate max-w-[220px]">{s.tag}</div>
             </div>
           </div>
         ))}
-        <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] text-gray-500">
-          +3 more sources
-        </div>
       </div>
     </div>
   )
@@ -125,13 +123,19 @@ function TypingBubble() {
   )
 }
 
-export default function ChatAssistant({ onProceedName, onSuggestNames, onReserveName }) {
-  const [messages, setMessages] = useState(chatSeed)
+export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated }) {
+  const [messages, setMessages] = useState([])
   const [nameDecision, setNameDecision] = useState(null)
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const scrollRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    getChatHistory()
+      .then((res) => setMessages(res.messages))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -141,24 +145,22 @@ export default function ChatAssistant({ onProceedName, onSuggestNames, onReserve
     setMessages((prev) => [...prev, { id: `m-${Date.now()}-${Math.random()}`, time: nowTime(), ...msg }])
   }
 
-  function botReplyTo(text) {
+  async function sendToBackend(text) {
     setTyping(true)
-    const key = text.trim().toLowerCase()
-    const canned = cannedAnswers[key]
-    setTimeout(() => {
+    try {
+      const res = await postChatMessage(text)
+      setMessages((prev) => [...prev, ...res.messages])
+      onCompanyUpdated?.(res.company)
+      onRegistrationsUpdated?.(res.registrations)
+    } catch (err) {
+      pushMessage({
+        sender: 'bot',
+        type: 'text',
+        text: `Sorry, I couldn't reach the assistant (${err.message || 'network error'}).`,
+      })
+    } finally {
       setTyping(false)
-      if (canned) {
-        pushMessage({ sender: 'bot', type: 'text', text: canned })
-      } else if (key.includes('proceed')) {
-        handleProceed()
-      } else {
-        pushMessage({
-          sender: 'bot',
-          type: 'text',
-          text: "Got it, I've noted that. Ask me about directors, documents, or fees — or type \"proceed\" whenever you're ready to continue the registration.",
-        })
-      }
-    }, 700)
+    }
   }
 
   function handleSend(text) {
@@ -166,65 +168,35 @@ export default function ChatAssistant({ onProceedName, onSuggestNames, onReserve
     if (!value) return
     pushMessage({ sender: 'user', type: 'text', text: value })
     setInput('')
-    botReplyTo(value)
+    sendToBackend(value)
   }
 
   function handleReserve(name) {
-    onReserveName?.(name)
-    pushMessage({ sender: 'user', type: 'text', text: `Reserve "${name}"` })
-    setTyping(true)
-    setTimeout(() => {
-      setTyping(false)
-      pushMessage({
-        sender: 'bot',
-        type: 'text',
-        text: `"${name}" has been reserved on the MCA portal (SPICe+ Part A). Would you like to proceed with this name?`,
-      })
-    }, 700)
+    const text = `Reserve "${name}"`
+    pushMessage({ sender: 'user', type: 'text', text })
+    sendToBackend(text)
   }
 
   function handleSuggestSimilar(name) {
-    pushMessage({ sender: 'user', type: 'text', text: `Suggest names similar to "${name}"` })
-    setTyping(true)
-    setTimeout(() => {
-      setTyping(false)
-      pushMessage({
-        sender: 'bot',
-        type: 'text',
-        text: `Here are a few alternatives close to "${name}": Innovatech Labs Pvt Ltd, Innovatek Systems Pvt Ltd, InnovaTech Software Pvt Ltd. Reply with the one you'd like me to check, or share a brand-new name.`,
-      })
-    }, 700)
+    const text = `Suggest names similar to "${name}"`
+    pushMessage({ sender: 'user', type: 'text', text })
+    sendToBackend(text)
   }
 
   function handleProceed() {
     if (nameDecision === 'proceed') return
     setNameDecision('proceed')
-    onProceedName?.()
-    setTyping(true)
-    setTimeout(() => {
-      setTyping(false)
-      pushMessage({
-        sender: 'bot',
-        type: 'text',
-        text: 'Great, name confirmed! Next, please share details of all directors — full name, DIN (if any), address, PAN and email — so I can prepare the SPICe+ Part B form.',
-      })
-    }, 700)
+    const text = 'Yes, proceed with this name.'
+    pushMessage({ sender: 'user', type: 'text', text })
+    sendToBackend(text)
   }
 
   function handleSuggestMore() {
     if (nameDecision) return
     setNameDecision('suggest')
-    onSuggestNames?.()
-    pushMessage({ sender: 'user', type: 'text', text: 'Please suggest more names.' })
-    setTyping(true)
-    setTimeout(() => {
-      setTyping(false)
-      pushMessage({
-        sender: 'bot',
-        type: 'text',
-        text: 'No problem! Share up to 2 new company names and I\'ll check their availability on the MCA portal right away.',
-      })
-    }, 700)
+    const text = 'Please suggest more names.'
+    pushMessage({ sender: 'user', type: 'text', text })
+    sendToBackend(text)
   }
 
   function handleFileChange(e) {
