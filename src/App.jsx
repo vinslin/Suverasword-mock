@@ -23,6 +23,7 @@ import QuickLinksPanel from './components/QuickLinksPanel'
 import RegistrationJourney from './components/RegistrationJourney'
 import Modal from './components/Modal'
 import PlaceholderPage from './components/PlaceholderPage'
+import DirectorsPanel from './components/DirectorsPanel'
 import { getCompany, getRegistrations, advanceRegistration, updateCompany } from './lib/api'
 
 const statusMeta = {
@@ -240,6 +241,7 @@ export default function App() {
                 {company ? (
                   <>
                     <CompanyOverview company={company} onViewDetails={() => setModal({ type: 'companyDetails' })} />
+                    <DirectorsPanel journeyStep={company.journeyStep} />
                     <RegistrationsTracker
                       registrations={registrations}
                       onAdvance={handleAdvanceRegistration}

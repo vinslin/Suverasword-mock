@@ -49,6 +49,7 @@ export const journeySteps = [
 ]
 
 export const journeyNextAction = {
+  2: 'Add at least 2 directors with their DIN, PAN and shareholding details.',
   3: 'Provide registered office address and proof.',
   4: 'Upload identity, address & office proof documents.',
   5: 'Review the SPICe+ form and sign digitally with DSC.',

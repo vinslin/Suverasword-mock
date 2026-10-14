@@ -1,5 +1,6 @@
 from app.models.chat_message import ChatMessage
 from app.models.company import Company
+from app.models.director import Director
 from app.models.registration import Registration
 
-__all__ = ["Company", "Registration", "ChatMessage"]
+__all__ = ["Company", "Registration", "ChatMessage", "Director"]

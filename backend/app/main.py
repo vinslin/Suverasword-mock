@@ -5,7 +5,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.database.base import Base
 from app.database.session import engine
-from app.routers import chat, company, health, registrations
+from app.routers import chat, company, directors, health, registrations
 
 app = FastAPI(title="Company Registration Assistant API")
 
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api")
 app.include_router(company.router, prefix="/api")
 app.include_router(registrations.router, prefix="/api")
+app.include_router(directors.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 
 

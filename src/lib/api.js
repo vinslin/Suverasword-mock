@@ -50,3 +50,19 @@ export function getChatHistory(limit = 50) {
 export function postChatMessage(text) {
   return request('/chat', { method: 'POST', body: JSON.stringify({ text }) })
 }
+
+export function getDirectors() {
+  return request('/directors')
+}
+
+export function addDirector(payload) {
+  return request('/directors', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function updateDirector(id, payload) {
+  return request(`/directors/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) })
+}
+
+export function deleteDirector(id) {
+  return request(`/directors/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}

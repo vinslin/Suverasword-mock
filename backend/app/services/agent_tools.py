@@ -14,6 +14,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.company import Company
+from app.models.director import Director
 from app.models.registration import STATUS_CYCLE, Registration
 from app.services.search_client import web_search
 
@@ -237,6 +238,57 @@ def build_tool_schemas(db: Session, company_id: int) -> list[dict]:
             "function": {
                 "name": "get_registration_snapshot",
                 "description": "Get the current company details and all registration statuses.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "add_director",
+                "description": (
+                    "Save a director's information to the company. Call this for each director "
+                    "the user provides. At least 2 directors are required for a Private Limited "
+                    "Company before Step 2 (Directors Information) can be marked complete."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Full legal name"},
+                        "din": {"type": "string", "description": "Director Identification Number (if available)"},
+                        "pan": {"type": "string", "description": "PAN card number (if available)"},
+                        "role": {
+                            "type": "string",
+                            "description": "e.g. 'Managing Director', 'Director', 'Whole-time Director'",
+                        },
+                        "shareholding_pct": {
+                            "type": "number",
+                            "description": "Ownership percentage (0–100)",
+                        },
+                        "appointment_date": {"type": "string", "description": "Date of appointment (DD MMM YYYY)"},
+                        "email": {"type": "string"},
+                        "phone": {"type": "string"},
+                    },
+                    "required": ["name"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_directors_snapshot",
+                "description": "Get the list of all directors currently saved for this company.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "validate_director_requirements",
+                "description": (
+                    "Check whether the company has met the minimum director requirements "
+                    "(at least 2 directors for a Private Limited Company). Returns whether "
+                    "Step 2 can be marked complete."
+                ),
                 "parameters": {"type": "object", "properties": {}},
             },
         },
@@ -493,6 +545,87 @@ def tool_get_registration_snapshot(db: Session, company_id: int) -> dict:
     }
 
 
+def tool_add_director(
+    db: Session,
+    company_id: int,
+    name: str,
+    din: str | None = None,
+    pan: str | None = None,
+    role: str | None = None,
+    shareholding_pct: float | None = None,
+    appointment_date: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+) -> dict:
+    _company(db, company_id)  # ensure company exists
+    director = Director(
+        company_id=company_id,
+        name=name,
+        din=din,
+        pan=pan,
+        role=role,
+        shareholding_pct=shareholding_pct,
+        appointment_date=appointment_date,
+        email=email,
+        phone=phone,
+    )
+    db.add(director)
+    db.commit()
+    db.refresh(director)
+    return {
+        "id": director.id,
+        "name": director.name,
+        "din": director.din,
+        "pan": director.pan,
+        "role": director.role,
+        "shareholdingPct": float(director.shareholding_pct) if director.shareholding_pct is not None else None,
+        "appointmentDate": director.appointment_date,
+        "email": director.email,
+        "phone": director.phone,
+    }
+
+
+def tool_get_directors_snapshot(db: Session, company_id: int) -> dict:
+    _company(db, company_id)
+    directors = db.query(Director).filter(Director.company_id == company_id).order_by(Director.id).all()
+    return {
+        "directors": [
+            {
+                "id": d.id,
+                "name": d.name,
+                "din": d.din,
+                "pan": d.pan,
+                "role": d.role,
+                "shareholdingPct": float(d.shareholding_pct) if d.shareholding_pct is not None else None,
+                "appointmentDate": d.appointment_date,
+                "email": d.email,
+                "phone": d.phone,
+            }
+            for d in directors
+        ],
+        "count": len(directors),
+    }
+
+
+def tool_validate_director_requirements(db: Session, company_id: int) -> dict:
+    company = _company(db, company_id)
+    count = db.query(Director).filter(Director.company_id == company_id).count()
+    # Private Limited Company and Public Limited Company require ≥2 directors
+    requires_two = company.type in ("Private Limited Company", "Public Limited Company")
+    min_required = 2 if requires_two else 1
+    met = count >= min_required
+    return {
+        "directorCount": count,
+        "minRequired": min_required,
+        "requirementsMet": met,
+        "canCompleteStep2": met,
+        "message": (
+            f"{count} director(s) saved. Minimum {min_required} required for {company.type}. "
+            + ("Step 2 can now be marked complete." if met else f"Need {min_required - count} more director(s).")
+        ),
+    }
+
+
 TOOL_IMPLEMENTATIONS = {
     "web_search": tool_web_search,
     "check_company_name_availability": tool_check_company_name_availability,
@@ -503,4 +636,7 @@ TOOL_IMPLEMENTATIONS = {
     "add_registration_item": tool_add_registration_item,
     "advance_journey_step": tool_advance_journey_step,
     "get_registration_snapshot": tool_get_registration_snapshot,
+    "add_director": tool_add_director,
+    "get_directors_snapshot": tool_get_directors_snapshot,
+    "validate_director_requirements": tool_validate_director_requirements,
 }
