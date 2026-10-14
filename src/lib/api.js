@@ -66,3 +66,25 @@ export function updateDirector(id, payload) {
 export function deleteDirector(id) {
   return request(`/directors/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
+
+export function getDocuments() {
+  return request('/documents')
+}
+
+export function uploadDocument(file, { docType, linkedTo, directorId } = {}) {
+  const form = new FormData()
+  form.append('file', file)
+  if (docType) form.append('doc_type', docType)
+  if (linkedTo) form.append('linked_to', linkedTo)
+  if (directorId != null) form.append('director_id', String(directorId))
+  return request('/documents/upload', { method: 'POST', headers: {}, body: form })
+}
+
+export function downloadDocumentUrl(id) {
+  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+  return `${base}/documents/${encodeURIComponent(id)}/download`
+}
+
+export function deleteDocument(id) {
+  return request(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}

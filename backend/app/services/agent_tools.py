@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models.company import Company
 from app.models.director import Director
+from app.models.document import Document
 from app.models.registration import STATUS_CYCLE, Registration
 from app.services.search_client import web_search
 
@@ -288,6 +289,18 @@ def build_tool_schemas(db: Session, company_id: int) -> list[dict]:
                     "Check whether the company has met the minimum director requirements "
                     "(at least 2 directors for a Private Limited Company). Returns whether "
                     "Step 2 can be marked complete."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_documents_snapshot",
+                "description": (
+                    "Get the list of all documents uploaded for this company, including "
+                    "their type (pan_card, aadhaar, address_proof, noc, moa, aoa) and "
+                    "what they are linked to (company or director)."
                 ),
                 "parameters": {"type": "object", "properties": {}},
             },
@@ -626,6 +639,30 @@ def tool_validate_director_requirements(db: Session, company_id: int) -> dict:
     }
 
 
+def tool_get_documents_snapshot(db: Session, company_id: int) -> dict:
+    _company(db, company_id)
+    docs = (
+        db.query(Document)
+        .filter(Document.company_id == company_id)
+        .order_by(Document.uploaded_at.desc())
+        .all()
+    )
+    return {
+        "documents": [
+            {
+                "id": d.id,
+                "originalName": d.original_name,
+                "docType": d.doc_type,
+                "linkedTo": d.linked_to,
+                "directorId": d.director_id,
+                "uploadedAt": d.uploaded_at.isoformat() if d.uploaded_at else None,
+            }
+            for d in docs
+        ],
+        "count": len(docs),
+    }
+
+
 TOOL_IMPLEMENTATIONS = {
     "web_search": tool_web_search,
     "check_company_name_availability": tool_check_company_name_availability,
@@ -639,4 +676,5 @@ TOOL_IMPLEMENTATIONS = {
     "add_director": tool_add_director,
     "get_directors_snapshot": tool_get_directors_snapshot,
     "validate_director_requirements": tool_validate_director_requirements,
+    "get_documents_snapshot": tool_get_documents_snapshot,
 }
