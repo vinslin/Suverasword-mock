@@ -8,9 +8,26 @@ import {
   CircleCheck,
   CircleX,
   Landmark,
+  X,
+  FileUp,
 } from 'lucide-react'
 import { quickChips } from '../data/mockData'
-import { getChatHistory, postChatMessage } from '../lib/api'
+import { getChatHistory, postChatMessage, uploadDocument } from '../lib/api'
+
+function inferDocMeta(text) {
+  const t = text.toLowerCase()
+  let docType
+  if (t.includes('pan')) docType = 'pan_card'
+  else if (t.includes('aadhaar') || t.includes('aadhar')) docType = 'aadhaar'
+  else if (t.includes('address')) docType = 'address_proof'
+  else if (t.includes('photo')) docType = 'photograph'
+  else if (t.includes('noc') || t.includes('rent')) docType = 'noc'
+  else if (t.includes('moa') || t.includes('memorandum')) docType = 'moa'
+  else if (t.includes('aoa') || t.includes('articles')) docType = 'aoa'
+
+  const linkedTo = t.includes('director') ? 'director' : 'company'
+  return { docType, linkedTo }
+}
 
 function nowTime() {
   return new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
@@ -123,11 +140,12 @@ function TypingBubble() {
   )
 }
 
-export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated }) {
+export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated, onDocumentUploaded }) {
   const [messages, setMessages] = useState([])
   const [nameDecision, setNameDecision] = useState(null)
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
+  const [pendingFile, setPendingFile] = useState(null)
   const scrollRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -163,12 +181,39 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
     }
   }
 
-  function handleSend(text) {
+  async function handleSend(text) {
     const value = (text ?? input).trim()
-    if (!value) return
-    pushMessage({ sender: 'user', type: 'text', text: value })
+    if (!value && !pendingFile) return
+
+    const file = pendingFile
+    const displayText = value || `Upload: ${file?.name}`
+    pushMessage({ sender: 'user', type: 'text', text: displayText })
     setInput('')
-    sendToBackend(value)
+    setPendingFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+
+    if (file) {
+      const { docType, linkedTo } = inferDocMeta(displayText)
+      try {
+        const doc = await uploadDocument(file, { docType, linkedTo })
+        onDocumentUploaded?.(doc)
+        pushMessage({
+          sender: 'bot',
+          type: 'text',
+          text: `✅ "${file.name}" uploaded successfully${docType ? ` as ${docType.replace('_', ' ')}` : ''} (linked to ${linkedTo}).`,
+        })
+      } catch (err) {
+        pushMessage({
+          sender: 'bot',
+          type: 'text',
+          text: `Sorry, I couldn't upload "${file.name}" — ${err.message || 'upload failed'}.`,
+        })
+      }
+    }
+
+    if (value) {
+      sendToBackend(value)
+    }
   }
 
   function handleReserve(name) {
@@ -202,17 +247,7 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
   function handleFileChange(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    pushMessage({ sender: 'user', type: 'text', text: `Attached file: ${file.name}` })
-    setTyping(true)
-    setTimeout(() => {
-      setTyping(false)
-      pushMessage({
-        sender: 'bot',
-        type: 'text',
-        text: `Thanks, I've received "${file.name}". I'll review it and let you know if anything else is needed.`,
-      })
-    }, 700)
-    e.target.value = ''
+    setPendingFile(file)
   }
 
   return (
@@ -303,30 +338,45 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
           ))}
         </div>
 
-        <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-indigo-400">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-gray-400 hover:text-gray-600 shrink-0"
-            title="Attach a file"
-          >
-            <Paperclip size={18} />
-          </button>
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSend()
-            }}
-            placeholder="Ask anything about registration, compliance, fees, documents..."
-            className="flex-1 text-[13.5px] outline-none placeholder:text-gray-400"
-          />
-          <button
-            onClick={() => handleSend()}
-            className="w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shrink-0"
-          >
-            <Send size={15} />
-          </button>
+        <div className={`border rounded-xl px-3 py-2 focus-within:border-indigo-400 ${pendingFile ? 'border-indigo-300 bg-indigo-50/30' : 'border-gray-200'}`}>
+          {pendingFile && (
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-indigo-100">
+              <FileUp size={13} className="text-indigo-500 shrink-0" />
+              <span className="text-[12px] text-indigo-700 font-medium truncate flex-1">{pendingFile.name}</span>
+              <button
+                onClick={() => { setPendingFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                className="text-indigo-400 hover:text-indigo-600 shrink-0"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-gray-400 hover:text-gray-600 shrink-0"
+              title="Attach a file"
+            >
+              <Paperclip size={18} />
+            </button>
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSend()
+              }}
+              placeholder={pendingFile ? 'Describe this document (e.g. company PAN card)…' : 'Ask anything about registration, compliance, fees, documents...'}
+              className="flex-1 text-[13.5px] outline-none placeholder:text-gray-400 bg-transparent"
+            />
+            <button
+              onClick={() => handleSend()}
+              disabled={!input.trim() && !pendingFile}
+              className="w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white flex items-center justify-center shrink-0"
+            >
+              <Send size={15} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

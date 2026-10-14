@@ -148,7 +148,7 @@ function UploadDrawer({ onUploaded, onClose }) {
 
 const REQUIRED_DOC_TYPES = ['pan_card', 'aadhaar', 'address_proof']
 
-export default function DocumentsPanel() {
+export default function DocumentsPanel({ refreshKey }) {
   const [documents, setDocuments] = useState([])
   const [showUpload, setShowUpload] = useState(false)
   const [deleting, setDeleting] = useState(null)
@@ -158,7 +158,7 @@ export default function DocumentsPanel() {
     getDocuments()
       .then(setDocuments)
       .catch(() => {})
-  }, [])
+  }, [refreshKey])
 
   function handleUploaded(doc) {
     setDocuments((prev) => [doc, ...prev])

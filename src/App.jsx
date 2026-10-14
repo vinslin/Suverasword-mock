@@ -99,6 +99,7 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState('15 May 2024 · 10:04 AM')
   const [refreshing, setRefreshing] = useState(false)
   const [modal, setModal] = useState(null)
+  const [docRefreshKey, setDocRefreshKey] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -235,6 +236,7 @@ export default function App() {
                 <ChatAssistant
                   onCompanyUpdated={handleCompanyUpdated}
                   onRegistrationsUpdated={handleRegistrationsUpdated}
+                  onDocumentUploaded={() => setDocRefreshKey((k) => k + 1)}
                 />
               </div>
 
@@ -243,7 +245,7 @@ export default function App() {
                   <>
                     <CompanyOverview company={company} onViewDetails={() => setModal({ type: 'companyDetails' })} />
                     <DirectorsPanel journeyStep={company.journeyStep} />
-                    <DocumentsPanel />
+                    <DocumentsPanel refreshKey={docRefreshKey} />
                     <RegistrationsTracker
                       registrations={registrations}
                       onAdvance={handleAdvanceRegistration}
