@@ -30,6 +30,14 @@ def update_company(payload: CompanyUpdateRequest, db: Session = Depends(get_db))
     company.incorporation_state = payload.incorporation_state
     company.authorized_capital = payload.authorized_capital
     company.paid_up_capital = payload.paid_up_capital
+    if payload.street is not None:
+        company.street = payload.street
+    if payload.city is not None:
+        company.city = payload.city
+    if payload.state is not None:
+        company.state = payload.state
+    if payload.pincode is not None:
+        company.pincode = payload.pincode
 
     db.commit()
     db.refresh(company)

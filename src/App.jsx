@@ -340,39 +340,84 @@ export default function App() {
   )
 }
 
+const INDIAN_STATES = [
+  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
+  'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
+  'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
+  'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
+  'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry',
+]
+
+function TextField({ label, value, onChange, placeholder }) {
+  return (
+    <label className="block">
+      <span className="text-[12px] text-gray-500 mb-1 block">{label}</span>
+      <input
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13.5px] outline-none focus:border-indigo-400"
+      />
+    </label>
+  )
+}
+
 function CompanyDetailsForm({ company, onSave }) {
   const [form, setForm] = useState(company)
+  function set(key, val) { setForm((f) => ({ ...f, [key]: val })) }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const parts = [form.street, form.city, form.state, form.pincode].filter(Boolean)
+    const registeredOffice = parts.length ? parts.join(', ') : form.registeredOffice
+    onSave({ ...form, registeredOffice })
+  }
+
   return (
-    <form
-      className="space-y-3.5"
-      onSubmit={(e) => {
-        e.preventDefault()
-        onSave(form)
-      }}
-    >
-      {[
-        ['name', 'Company Name'],
-        ['type', 'Company Type'],
-        ['registeredOffice', 'Registered Office'],
-        ['businessActivity', 'Business Activity'],
-        ['incorporationState', 'Incorporation State'],
-      ].map(([key, label]) => (
-        <label key={key} className="block">
-          <span className="text-[12px] text-gray-500 mb-1 block">{label}</span>
-          <input
-            value={form[key]}
-            onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13.5px] outline-none focus:border-indigo-400"
-          />
-        </label>
-      ))}
+    <form className="space-y-3.5" onSubmit={handleSubmit}>
+      <TextField label="Company Name" value={form.name} onChange={(v) => set('name', v)} />
+      <TextField label="Company Type" value={form.type} onChange={(v) => set('type', v)} />
+      <TextField label="Business Activity" value={form.businessActivity} onChange={(v) => set('businessActivity', v)} />
+      <TextField label="Incorporation State" value={form.incorporationState} onChange={(v) => set('incorporationState', v)} />
+
+      <div className="border border-gray-200 rounded-xl p-3.5 space-y-3">
+        <div className="text-[12px] font-medium text-gray-600">Registered Office Address</div>
+        <TextField
+          label="Street / Building / Flat"
+          value={form.street}
+          onChange={(v) => set('street', v)}
+          placeholder="e.g. No. 12, 3rd Floor, MG Road"
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <TextField label="City" value={form.city} onChange={(v) => set('city', v)} placeholder="e.g. Bengaluru" />
+          <label className="block">
+            <span className="text-[12px] text-gray-500 mb-1 block">State</span>
+            <select
+              value={form.state ?? ''}
+              onChange={(e) => set('state', e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13.5px] outline-none focus:border-indigo-400 bg-white"
+            >
+              <option value="">— select —</option>
+              {INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </label>
+        </div>
+        <TextField
+          label="Pincode"
+          value={form.pincode}
+          onChange={(v) => set('pincode', v)}
+          placeholder="6-digit pincode"
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="text-[12px] text-gray-500 mb-1 block">Authorized Capital (₹)</span>
           <input
             type="number"
             value={form.authorizedCapital}
-            onChange={(e) => setForm((f) => ({ ...f, authorizedCapital: Number(e.target.value) }))}
+            onChange={(e) => set('authorizedCapital', Number(e.target.value))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13.5px] outline-none focus:border-indigo-400"
           />
         </label>
@@ -381,7 +426,7 @@ function CompanyDetailsForm({ company, onSave }) {
           <input
             type="number"
             value={form.paidUpCapital}
-            onChange={(e) => setForm((f) => ({ ...f, paidUpCapital: Number(e.target.value) }))}
+            onChange={(e) => set('paidUpCapital', Number(e.target.value))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13.5px] outline-none focus:border-indigo-400"
           />
         </label>

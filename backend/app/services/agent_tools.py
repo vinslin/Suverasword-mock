@@ -147,7 +147,11 @@ def build_tool_schemas(db: Session, company_id: int) -> list[dict]:
                     "properties": {
                         "type": {"type": "string"},
                         "business_activity": {"type": "string"},
-                        "registered_office": {"type": "string"},
+                        "registered_office": {"type": "string", "description": "Full address as a single display string (auto-computed from street/city/state/pincode if provided)"},
+                        "street": {"type": "string", "description": "Street / flat / building number"},
+                        "city": {"type": "string"},
+                        "state": {"type": "string", "description": "Indian state name"},
+                        "pincode": {"type": "string", "description": "6-digit PIN code"},
                         "incorporation_state": {"type": "string"},
                         "authorized_capital": {"type": "integer"},
                         "paid_up_capital": {"type": "integer"},
@@ -403,6 +407,10 @@ def tool_update_company_details(
     type: str | None = None,
     business_activity: str | None = None,
     registered_office: str | None = None,
+    street: str | None = None,
+    city: str | None = None,
+    state: str | None = None,
+    pincode: str | None = None,
     incorporation_state: str | None = None,
     authorized_capital: int | None = None,
     paid_up_capital: int | None = None,
@@ -412,7 +420,19 @@ def tool_update_company_details(
         company.type = type
     if business_activity is not None:
         company.business_activity = business_activity
-    if registered_office is not None:
+    if street is not None:
+        company.street = street
+    if city is not None:
+        company.city = city
+    if state is not None:
+        company.state = state
+    if pincode is not None:
+        company.pincode = pincode
+    # Auto-compute registered_office from structured fields when any part is provided
+    if any(f is not None for f in [street, city, state, pincode]):
+        parts = [company.street, company.city, company.state, company.pincode]
+        company.registered_office = ", ".join(p for p in parts if p)
+    elif registered_office is not None:
         company.registered_office = registered_office
     if incorporation_state is not None:
         company.incorporation_state = incorporation_state
@@ -426,6 +446,10 @@ def tool_update_company_details(
         "type": company.type,
         "businessActivity": company.business_activity,
         "registeredOffice": company.registered_office,
+        "street": company.street,
+        "city": company.city,
+        "state": company.state,
+        "pincode": company.pincode,
         "incorporationState": company.incorporation_state,
         "authorizedCapital": company.authorized_capital,
         "paidUpCapital": company.paid_up_capital,
@@ -538,6 +562,10 @@ def tool_get_registration_snapshot(db: Session, company_id: int) -> dict:
             "statusTag": company.status_tag,
             "type": company.type,
             "registeredOffice": company.registered_office,
+            "street": company.street,
+            "city": company.city,
+            "state": company.state,
+            "pincode": company.pincode,
             "businessActivity": company.business_activity,
             "nicCode": company.nic_code,
             "authorizedCapital": company.authorized_capital,

@@ -14,6 +14,10 @@ class CompanyOut(BaseModel):
     paid_up_capital: int = Field(alias="paidUpCapital")
     incorporation_state: str = Field(alias="incorporationState")
     journey_step: int = Field(alias="journeyStep")
+    street: str = ""
+    city: str = ""
+    state: str = ""
+    pincode: str = ""
 
 
 class CompanyUpdateRequest(BaseModel):
@@ -26,3 +30,7 @@ class CompanyUpdateRequest(BaseModel):
     incorporation_state: str = Field(alias="incorporationState")
     authorized_capital: int = Field(alias="authorizedCapital")
     paid_up_capital: int = Field(alias="paidUpCapital")
+    street: str | None = None
+    city: str | None = None
+    state: str | None = None
+    pincode: str | None = None

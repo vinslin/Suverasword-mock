@@ -18,3 +18,7 @@ class Company(Base):
     paid_up_capital: Mapped[int] = mapped_column(Integer, nullable=False)
     incorporation_state: Mapped[str] = mapped_column(String, nullable=False)
     journey_step: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    street: Mapped[str] = mapped_column(String, nullable=False, default="")
+    city: Mapped[str] = mapped_column(String, nullable=False, default="")
+    state: Mapped[str] = mapped_column(String, nullable=False, default="")
+    pincode: Mapped[str] = mapped_column(String, nullable=False, default="")

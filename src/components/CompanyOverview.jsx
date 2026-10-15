@@ -37,7 +37,21 @@ export default function CompanyOverview({ company, onViewDetails }) {
 
         <div>
           <div className="text-gray-400 mb-1">Registered Office</div>
-          <div className="font-medium text-gray-900">{company.registeredOffice}</div>
+          {company.street || company.city ? (
+            <div className="space-y-0.5">
+              {company.street && (
+                <div className="font-medium text-gray-900">{company.street}</div>
+              )}
+              {(company.city || company.state || company.pincode) && (
+                <div className="text-gray-700">
+                  {[company.city, company.state].filter(Boolean).join(', ')}
+                  {company.pincode ? ` — ${company.pincode}` : ''}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="font-medium text-gray-900">{company.registeredOffice || '—'}</div>
+          )}
         </div>
 
         <div>

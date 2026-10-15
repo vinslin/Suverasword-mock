@@ -39,6 +39,10 @@ def _apply_light_migrations() -> None:
         conn.execute(
             text("ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_company_id_fkey")
         )
+        for col in ("street", "city", "state", "pincode"):
+            conn.execute(
+                text(f"ALTER TABLE companies ADD COLUMN IF NOT EXISTS {col} VARCHAR NOT NULL DEFAULT ''")
+            )
 
 
 @app.on_event("startup")
