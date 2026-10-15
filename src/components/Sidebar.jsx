@@ -3,7 +3,6 @@ import {
   Home,
   MessageSquare,
   Building2,
-  ListChecks,
   FileText,
   Calendar,
   BookOpen,
@@ -16,7 +15,6 @@ const navItems = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'assistant', label: 'AI Assistant', icon: MessageSquare },
   { id: 'companies', label: 'My Companies', icon: Building2 },
-  { id: 'tasks', label: 'Tasks & To-Dos', icon: ListChecks, badge: 5 },
   { id: 'documents', label: 'Documents', icon: FileText },
 ]
 
