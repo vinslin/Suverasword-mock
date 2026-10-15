@@ -4,9 +4,18 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.company import Company
 from app.schemas.company import CompanyOut, CompanyUpdateRequest
+from app.services.agent_tools import tool_get_completeness_score
 from app.services.seed import DEMO_COMPANY_ID
 
 router = APIRouter(prefix="/company", tags=["company"])
+
+
+@router.get("/completeness")
+def get_completeness(db: Session = Depends(get_db)):
+    try:
+        return tool_get_completeness_score(db, DEMO_COMPANY_ID)
+    except ValueError:
+        return {"score": 0, "completed": 0, "total": 9, "checks": {}, "missing": ["company not created yet"]}
 
 
 @router.get("", response_model=CompanyOut, response_model_by_alias=True)

@@ -31,6 +31,10 @@ export function getCompany() {
   return request('/company')
 }
 
+export function getCompleteness() {
+  return request('/company/completeness')
+}
+
 export function updateCompany(payload) {
   return request('/company', { method: 'PUT', body: JSON.stringify(payload) })
 }

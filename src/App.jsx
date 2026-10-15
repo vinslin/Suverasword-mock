@@ -25,6 +25,7 @@ import Modal from './components/Modal'
 import PlaceholderPage from './components/PlaceholderPage'
 import DirectorsPanel from './components/DirectorsPanel'
 import DocumentsPanel from './components/DocumentsPanel'
+import CompletenessCard from './components/CompletenessCard'
 import { getCompany, getRegistrations, advanceRegistration, updateCompany } from './lib/api'
 
 const statusMeta = {
@@ -244,6 +245,7 @@ export default function App() {
                 {company ? (
                   <>
                     <CompanyOverview company={company} onViewDetails={() => setModal({ type: 'companyDetails' })} />
+                    <CompletenessCard refreshKey={docRefreshKey} />
                     <DirectorsPanel journeyStep={company.journeyStep} />
                     <DocumentsPanel refreshKey={docRefreshKey} />
                     <RegistrationsTracker

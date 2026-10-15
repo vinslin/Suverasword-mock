@@ -309,6 +309,19 @@ def build_tool_schemas(db: Session, company_id: int) -> list[dict]:
                 "parameters": {"type": "object", "properties": {}},
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_completeness_score",
+                "description": (
+                    "Get the onboarding completeness score (0–100%) for the company profile. "
+                    "Returns which required fields are filled and which are still missing. "
+                    "Call this at the start of every session and whenever the user asks "
+                    "how complete their profile is or what still needs to be done."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
     ]
 
 
@@ -691,6 +704,37 @@ def tool_get_documents_snapshot(db: Session, company_id: int) -> dict:
     }
 
 
+def tool_get_completeness_score(db: Session, company_id: int) -> dict:
+    company = _company(db, company_id)
+    doc_types = {
+        d.doc_type
+        for d in db.query(Document.doc_type).filter(Document.company_id == company_id).all()
+        if d.doc_type
+    }
+    director_count = db.query(Director).filter(Director.company_id == company_id).count()
+
+    checks: dict[str, bool] = {
+        "company_name":      bool(company.name),
+        "company_type":      bool(company.type),
+        "business_activity": bool(company.business_activity),
+        "registered_office": bool(company.registered_office),
+        "directors_added":   director_count >= 2,
+        "pan_uploaded":      "pan_card" in doc_types,
+        "aadhaar_uploaded":  "aadhaar" in doc_types,
+        "address_proof":     "address_proof" in doc_types,
+        "noc_uploaded":      "noc" in doc_types,
+    }
+    completed = sum(checks.values())
+    total = len(checks)
+    return {
+        "score": round((completed / total) * 100),
+        "completed": completed,
+        "total": total,
+        "checks": checks,
+        "missing": [k for k, v in checks.items() if not v],
+    }
+
+
 TOOL_IMPLEMENTATIONS = {
     "web_search": tool_web_search,
     "check_company_name_availability": tool_check_company_name_availability,
@@ -705,4 +749,5 @@ TOOL_IMPLEMENTATIONS = {
     "get_directors_snapshot": tool_get_directors_snapshot,
     "validate_director_requirements": tool_validate_director_requirements,
     "get_documents_snapshot": tool_get_documents_snapshot,
+    "get_completeness_score": tool_get_completeness_score,
 }
