@@ -23,6 +23,7 @@ import QuickLinksPanel from './components/QuickLinksPanel'
 import RegistrationJourney from './components/RegistrationJourney'
 import Modal from './components/Modal'
 import PlaceholderPage from './components/PlaceholderPage'
+import DocumentsPage from './components/DocumentsPage'
 import DirectorsPanel from './components/DirectorsPanel'
 import DocumentsPanel from './components/DocumentsPanel'
 import CompletenessCard from './components/CompletenessCard'
@@ -270,6 +271,8 @@ export default function App() {
 
             {company && <RegistrationJourney currentStep={company.journeyStep} />}
           </>
+        ) : activeNav === 'documents' ? (
+          <DocumentsPage />
         ) : (
           <PlaceholderPage {...(placeholderMeta[activeNav] ?? placeholderMeta.home)} />
         )}
