@@ -5,26 +5,12 @@ import {
   Building2,
   ListChecks,
   FileText,
-  ShieldCheck,
-  ChevronDown,
-  ChevronUp,
   Calendar,
   BookOpen,
   Calculator,
   HelpCircle,
-  CheckCircle2,
-  Clock3,
-  Circle,
-  ArrowRight,
   LifeBuoy,
 } from 'lucide-react'
-
-const statusStyle = {
-  Completed: { icon: CheckCircle2, className: 'text-emerald-500' },
-  'In Progress': { icon: Clock3, className: 'text-blue-500' },
-  Pending: { icon: Clock3, className: 'text-amber-500' },
-  'Not Started': { icon: Circle, className: 'text-gray-300' },
-}
 
 const navItems = [
   { id: 'home', label: 'Home', icon: Home },
@@ -95,54 +81,6 @@ export default function Sidebar({
             ) : null}
           </button>
         ))}
-
-        <div className="pt-1">
-          <button
-            onClick={onToggleRegistrations}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-          >
-            <ShieldCheck size={17} />
-            <span className="flex-1 text-left font-medium">Registrations</span>
-            {registrationsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-          {registrationsOpen && (
-            <div className="mt-1 space-y-0.5">
-              {registrations.map((reg) => {
-                const style = statusStyle[reg.status] ?? statusStyle['Not Started']
-                const StatusIcon = style.icon
-                return (
-                  <button
-                    key={reg.id}
-                    onClick={() => onSelectRegistration(reg.id)}
-                    className="w-full flex items-center gap-2.5 pl-9 pr-3 py-1.5 rounded-lg text-[13px] text-gray-600 hover:bg-gray-50 text-left"
-                  >
-                    <StatusIcon size={14} className={style.className} />
-                    <span className="flex-1 truncate">{reg.name}</span>
-                    <span
-                      className={`text-[11px] font-medium ${
-                        reg.status === 'Completed'
-                          ? 'text-emerald-600'
-                          : reg.status === 'In Progress'
-                          ? 'text-blue-600'
-                          : reg.status === 'Pending'
-                          ? 'text-amber-600'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      {reg.status}
-                    </span>
-                  </button>
-                )
-              })}
-              <button
-                onClick={onViewAllRegistrations}
-                className="w-full flex items-center gap-1.5 pl-9 pr-3 py-2 text-[13px] font-medium text-indigo-600 hover:text-indigo-700"
-              >
-                View All Registrations <ArrowRight size={13} />
-              </button>
-            </div>
-          )}
-        </div>
 
         <div className="h-px bg-gray-100 my-2" />
 
