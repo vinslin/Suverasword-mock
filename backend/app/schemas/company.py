@@ -19,6 +19,7 @@ class CompanyOut(BaseModel):
     city: str = ""
     state: str = ""
     pincode: str = ""
+    incorporation_date: str | None = Field(default=None, alias="incorporationDate")
 
 
 class CompanyUpdateRequest(BaseModel):

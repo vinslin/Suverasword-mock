@@ -22,3 +22,4 @@ class Company(Base):
     city: Mapped[str] = mapped_column(String, nullable=False, default="")
     state: Mapped[str] = mapped_column(String, nullable=False, default="")
     pincode: Mapped[str] = mapped_column(String, nullable=False, default="")
+    incorporation_date: Mapped[str | None] = mapped_column(String, nullable=True)

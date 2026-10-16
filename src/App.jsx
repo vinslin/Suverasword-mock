@@ -373,7 +373,7 @@ export default function App() {
         ) : activeNav === 'cost' ? (
           <CostEstimatorPage companyId={activeCompanyId} />
         ) : activeNav === 'calendar' ? (
-          <ComplianceCalendarPage />
+          <ComplianceCalendarPage company={company} />
         ) : activeNav === 'policies' ? (
           <PoliciesPage company={company} companyId={activeCompanyId} />
         ) : (

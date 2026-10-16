@@ -50,6 +50,9 @@ def _apply_light_migrations() -> None:
         conn.execute(
             text("ALTER TABLE registrations ADD PRIMARY KEY (id, company_id)")
         )
+        conn.execute(
+            text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS incorporation_date VARCHAR")
+        )
 
 
 @app.on_event("startup")

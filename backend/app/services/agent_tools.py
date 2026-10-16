@@ -446,6 +446,7 @@ def tool_update_company_details(
     incorporation_state: str | None = None,
     authorized_capital: int | None = None,
     paid_up_capital: int | None = None,
+    incorporation_date: str | None = None,
 ) -> dict:
     company = _company(db, company_id)
     if type is not None:
@@ -472,6 +473,8 @@ def tool_update_company_details(
         company.authorized_capital = authorized_capital
     if paid_up_capital is not None:
         company.paid_up_capital = paid_up_capital
+    if incorporation_date is not None:
+        company.incorporation_date = incorporation_date
     db.commit()
     db.refresh(company)
     return {
@@ -605,6 +608,7 @@ def tool_get_registration_snapshot(db: Session, company_id: int) -> dict:
             "paidUpCapital": company.paid_up_capital,
             "incorporationState": company.incorporation_state,
             "journeyStep": company.journey_step,
+            "incorporationDate": company.incorporation_date,
         },
         "registrations": [
             {
