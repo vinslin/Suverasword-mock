@@ -155,23 +155,24 @@ function DirectorFormOverlay({ initial, onSubmit, onClose, saving }) {
   )
 }
 
-export default function DirectorsPanel({ journeyStep }) {
+export default function DirectorsPanel({ companyId, journeyStep }) {
   const [directors, setDirectors] = useState([])
   const [overlay, setOverlay] = useState(null) // null | 'add' | { director }
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    getDirectors()
+    if (!companyId) return
+    getDirectors(companyId)
       .then(setDirectors)
       .catch(() => {})
-  }, [])
+  }, [companyId])
 
   async function handleAdd(payload) {
     setSaving(true)
     setError(null)
     try {
-      const created = await addDirector(payload)
+      const created = await addDirector(companyId, payload)
       setDirectors((prev) => [...prev, created])
       setOverlay(null)
     } catch (err) {
@@ -185,7 +186,7 @@ export default function DirectorsPanel({ journeyStep }) {
     setSaving(true)
     setError(null)
     try {
-      const updated = await updateDirector(id, payload)
+      const updated = await updateDirector(companyId, id, payload)
       setDirectors((prev) => prev.map((d) => (d.id === id ? updated : d)))
       setOverlay(null)
     } catch (err) {
@@ -198,7 +199,7 @@ export default function DirectorsPanel({ journeyStep }) {
   async function handleDelete(id) {
     if (!window.confirm('Remove this director?')) return
     try {
-      await deleteDirector(id)
+      await deleteDirector(companyId, id)
       setDirectors((prev) => prev.filter((d) => d.id !== id))
     } catch (err) {
       setError(err.message || 'Failed to delete director')

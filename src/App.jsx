@@ -30,7 +30,15 @@ import ComplianceCalendarPage from './components/ComplianceCalendarPage'
 import DirectorsPanel from './components/DirectorsPanel'
 import DocumentsPanel from './components/DocumentsPanel'
 import CompletenessCard from './components/CompletenessCard'
-import { getCompany, getRegistrations, advanceRegistration, updateCompany } from './lib/api'
+import MyCompaniesPage from './components/MyCompaniesPage'
+import {
+  listCompanies,
+  createCompany,
+  getCompany,
+  getRegistrations,
+  advanceRegistration,
+  updateCompany,
+} from './lib/api'
 
 const statusMeta = {
   Completed: { icon: CheckCircle2, className: 'text-emerald-500' },
@@ -51,11 +59,6 @@ const placeholderMeta = {
     icon: Home,
     title: 'Home',
     description: "Your dashboard overview will show up here — recent activity, deadlines, and quick actions across all your companies.",
-  },
-  companies: {
-    icon: Building2,
-    title: 'My Companies',
-    description: 'A list of every company you\'ve registered or are in the process of registering will appear here.',
   },
   tasks: {
     icon: ListChecks,
@@ -87,53 +90,105 @@ const placeholderMeta = {
     title: 'Help & Support',
     description: "Reach out to our support team or browse frequently asked questions about company registration.",
   },
-  newCompany: {
-    icon: Building2,
-    title: 'Start New Company',
-    description: 'Kick off a new registration journey for another business entity — this flow mirrors the AI Assistant setup.',
-  },
 }
 
 export default function App() {
   const [activeNav, setActiveNav] = useState('assistant')
   const [registrationsOpen, setRegistrationsOpen] = useState(true)
+
+  // Multi-company state
+  const [companies, setCompanies] = useState([])
+  const [activeCompanyId, setActiveCompanyId] = useState(null)
+  const [creatingCompany, setCreatingCompany] = useState(false)
+
+  // Active company data
   const [registrations, setRegistrations] = useState([])
   const [company, setCompany] = useState(null)
   const [companyChecked, setCompanyChecked] = useState(false)
   const [loadError, setLoadError] = useState(null)
+
   const [lastUpdated, setLastUpdated] = useState('15 May 2024 · 10:04 AM')
   const [refreshing, setRefreshing] = useState(false)
   const [modal, setModal] = useState(null)
   const [docRefreshKey, setDocRefreshKey] = useState(0)
 
+  // Load companies list on mount
   useEffect(() => {
-    async function load() {
+    async function loadCompanies() {
       try {
-        const registrationsData = await getRegistrations()
-        setRegistrations(registrationsData)
+        const list = await listCompanies()
+        setCompanies(list)
+        if (list.length > 0) {
+          setActiveCompanyId(list[0].id)
+        } else {
+          setCompanyChecked(true)
+        }
       } catch (err) {
-        setLoadError(err.message || 'Failed to load company data')
+        setLoadError(err.message || 'Failed to reach the backend')
+      }
+    }
+    loadCompanies()
+  }, [])
+
+  // Load active company data whenever activeCompanyId changes
+  useEffect(() => {
+    if (!activeCompanyId) return
+
+    setCompany(null)
+    setRegistrations([])
+    setCompanyChecked(false)
+
+    async function loadActiveCompany() {
+      try {
+        const regs = await getRegistrations(activeCompanyId)
+        setRegistrations(regs)
+      } catch (err) {
+        setLoadError(err.message || 'Failed to load registrations')
+        setCompanyChecked(true)
         return
       }
 
       try {
-        const companyData = await getCompany()
-        setCompany(companyData)
+        const companyData = await getCompany(activeCompanyId)
+        // Only set company if it has a name (not a blank shell)
+        if (companyData.name) {
+          setCompany(companyData)
+        }
       } catch (err) {
         if (err.status !== 404) {
           setLoadError(err.message || 'Failed to load company data')
-          return
         }
-        // 404 just means no company has been created yet — not an error.
       }
 
       setCompanyChecked(true)
     }
-    load()
-  }, [])
+
+    loadActiveCompany()
+  }, [activeCompanyId])
+
+  async function handleNewCompany() {
+    setCreatingCompany(true)
+    try {
+      const newCompany = await createCompany()
+      setCompanies((prev) => [...prev, newCompany])
+      setActiveCompanyId(newCompany.id)
+      setActiveNav('assistant')
+    } catch (err) {
+      alert('Failed to create company: ' + (err.message || 'Unknown error'))
+    } finally {
+      setCreatingCompany(false)
+    }
+  }
+
+  function handleSelectCompany(id) {
+    setActiveCompanyId(id)
+    setActiveNav('assistant')
+    setModal(null)
+  }
 
   async function handleAdvanceRegistration(id) {
-    const updated = await advanceRegistration(id)
+    if (!activeCompanyId) return
+    const updated = await advanceRegistration(activeCompanyId, id)
     setRegistrations((prev) => prev.map((r) => (r.id === id ? updated : r)))
   }
 
@@ -179,15 +234,23 @@ export default function App() {
 
   function handleCompanyUpdated(nextCompany) {
     setCompany(nextCompany)
+    setCompanies((prev) =>
+      prev.map((c) =>
+        c.id === nextCompany.id
+          ? { ...c, name: nextCompany.name, type: nextCompany.type, journeyStep: nextCompany.journeyStep }
+          : c,
+      ),
+    )
   }
 
   function handleRegistrationsUpdated(nextRegistrations) {
     setRegistrations(nextRegistrations)
   }
 
-  const selectedRegistration = typeof modal === 'object' && modal?.type === 'registration'
-    ? registrations.find((r) => r.id === modal.id)
-    : null
+  const selectedRegistration =
+    typeof modal === 'object' && modal?.type === 'registration'
+      ? registrations.find((r) => r.id === modal.id)
+      : null
 
   if (loadError) {
     return (
@@ -200,7 +263,7 @@ export default function App() {
     )
   }
 
-  if (!companyChecked) {
+  if (!companyChecked && activeCompanyId) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#f3f4f8]">
         <div className="text-[13.5px] text-gray-500">Loading company data…</div>
@@ -213,6 +276,10 @@ export default function App() {
       <Sidebar
         activeNav={activeNav}
         onNavigate={setActiveNav}
+        onNewCompany={handleNewCompany}
+        creatingCompany={creatingCompany}
+        companies={companies}
+        activeCompanyId={activeCompanyId}
         registrationsOpen={registrationsOpen}
         onToggleRegistrations={() => setRegistrationsOpen((v) => !v)}
         registrations={registrations}
@@ -238,20 +305,40 @@ export default function App() {
           <>
             <div className="flex-1 flex min-h-0">
               <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200">
-                <ChatAssistant
-                  onCompanyUpdated={handleCompanyUpdated}
-                  onRegistrationsUpdated={handleRegistrationsUpdated}
-                  onDocumentUploaded={() => setDocRefreshKey((k) => k + 1)}
-                />
+                {activeCompanyId ? (
+                  <ChatAssistant
+                    companyId={activeCompanyId}
+                    onCompanyUpdated={handleCompanyUpdated}
+                    onRegistrationsUpdated={handleRegistrationsUpdated}
+                    onDocumentUploaded={() => setDocRefreshKey((k) => k + 1)}
+                  />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center p-8 text-center">
+                    <div>
+                      <Building2 size={40} className="mx-auto text-indigo-200 mb-4" />
+                      <div className="text-[15px] font-semibold text-gray-900 mb-2">No active company</div>
+                      <p className="text-[13px] text-gray-500 mb-4">
+                        Select a company from "My Companies" or start a new one.
+                      </p>
+                      <button
+                        onClick={handleNewCompany}
+                        disabled={creatingCompany}
+                        className="rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-[13px] font-medium px-5 py-2.5"
+                      >
+                        {creatingCompany ? 'Creating…' : '+ Start New Company'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="w-[360px] shrink-0 overflow-y-auto px-5 py-5 space-y-4">
                 {company ? (
                   <>
                     <CompanyOverview company={company} onViewDetails={() => setModal({ type: 'companyDetails' })} />
-                    <CompletenessCard refreshKey={docRefreshKey} />
-                    <DirectorsPanel journeyStep={company.journeyStep} />
-                    <DocumentsPanel refreshKey={docRefreshKey} />
+                    <CompletenessCard companyId={activeCompanyId} refreshKey={docRefreshKey} />
+                    <DirectorsPanel companyId={activeCompanyId} journeyStep={company.journeyStep} />
+                    <DocumentsPanel companyId={activeCompanyId} refreshKey={docRefreshKey} />
                     <RegistrationsTracker
                       registrations={registrations}
                       onAdvance={handleAdvanceRegistration}
@@ -263,8 +350,7 @@ export default function App() {
                     <Building2 size={22} className="mx-auto text-indigo-400 mb-2" />
                     <div className="font-semibold text-gray-900 text-[14px] mb-1">No company yet</div>
                     <p className="text-[12.5px] text-gray-500 leading-relaxed">
-                      Tell the assistant about your business — its name, type, and what it
-                      does — to get started.
+                      Tell the assistant about your business — its name, type, and what it does — to get started.
                     </p>
                   </div>
                 )}
@@ -274,14 +360,21 @@ export default function App() {
 
             {company && <RegistrationJourney currentStep={company.journeyStep} />}
           </>
+        ) : activeNav === 'companies' ? (
+          <MyCompaniesPage
+            companies={companies}
+            onSelect={handleSelectCompany}
+            onNewCompany={handleNewCompany}
+            creating={creatingCompany}
+          />
         ) : activeNav === 'documents' ? (
-          <DocumentsPage />
+          <DocumentsPage companyId={activeCompanyId} />
         ) : activeNav === 'cost' ? (
-          <CostEstimatorPage />
+          <CostEstimatorPage companyId={activeCompanyId} />
         ) : activeNav === 'calendar' ? (
           <ComplianceCalendarPage />
         ) : activeNav === 'policies' ? (
-          <PoliciesPage company={company} />
+          <PoliciesPage company={company} companyId={activeCompanyId} />
         ) : (
           <PlaceholderPage {...(placeholderMeta[activeNav] ?? placeholderMeta.home)} />
         )}
@@ -292,8 +385,8 @@ export default function App() {
           <CompanyDetailsForm
             company={company}
             onSave={async (next) => {
-              const updated = await updateCompany(next)
-              setCompany(updated)
+              const updated = await updateCompany(activeCompanyId, next)
+              handleCompanyUpdated(updated)
               setModal(null)
             }}
           />
@@ -339,9 +432,7 @@ export default function App() {
             <p className="text-gray-500">{selectedRegistration.detail}</p>
             {selectedRegistration.status !== 'Completed' && (
               <button
-                onClick={() => {
-                  handleAdvanceRegistration(selectedRegistration.id)
-                }}
+                onClick={() => handleAdvanceRegistration(selectedRegistration.id)}
                 className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-medium px-4 py-2"
               >
                 {selectedRegistration.status === 'In Progress' ? 'Mark as Completed' : 'Start Registration'}

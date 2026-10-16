@@ -7,6 +7,8 @@ import {
   Calendar,
   BookOpen,
   Calculator,
+  Plus,
+  Loader,
 } from 'lucide-react'
 
 const navItems = [
@@ -25,12 +27,18 @@ const bottomNavItems = [
 export default function Sidebar({
   activeNav,
   onNavigate,
+  onNewCompany,
+  creatingCompany,
+  companies,
+  activeCompanyId,
   registrationsOpen,
   onToggleRegistrations,
   registrations,
   onSelectRegistration,
   onViewAllRegistrations,
 }) {
+  const activeCompany = companies?.find((c) => c.id === activeCompanyId)
+
   return (
     <aside className="w-64 shrink-0 bg-white border-r border-gray-200 flex flex-col h-screen">
       <div className="flex items-center gap-2 px-5 pt-5 pb-4">
@@ -49,12 +57,27 @@ export default function Sidebar({
 
       <div className="px-4 pb-3">
         <button
-          onClick={() => onNavigate('newCompany')}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors text-white text-sm font-medium py-2.5"
+          onClick={onNewCompany}
+          disabled={creatingCompany}
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 transition-colors text-white text-sm font-medium py-2.5"
         >
-          <span className="text-lg leading-none">+</span> Start New Company
+          {creatingCompany ? (
+            <><Loader size={14} className="animate-spin" /> Creating…</>
+          ) : (
+            <><Plus size={15} /> Start New Company</>
+          )}
         </button>
       </div>
+
+      {activeCompany?.name && (
+        <div className="px-4 pb-2">
+          <div className="bg-indigo-50 rounded-xl px-3 py-2">
+            <div className="text-[10px] text-indigo-400 font-medium uppercase tracking-wide">Active</div>
+            <div className="text-[12.5px] font-semibold text-indigo-800 truncate mt-0.5">{activeCompany.name}</div>
+            <div className="text-[11px] text-indigo-400">{activeCompany.type || '—'}</div>
+          </div>
+        </div>
+      )}
 
       <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
         {navItems.map((item) => (
@@ -69,11 +92,11 @@ export default function Sidebar({
           >
             <item.icon size={17} />
             <span className="flex-1 text-left">{item.label}</span>
-            {item.badge ? (
-              <span className="bg-red-500 text-white text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center">
-                {item.badge}
+            {item.id === 'companies' && companies?.length > 0 && (
+              <span className="text-[10px] bg-indigo-100 text-indigo-600 font-semibold rounded-full w-5 h-5 flex items-center justify-center">
+                {companies.length}
               </span>
-            ) : null}
+            )}
           </button>
         ))}
 
@@ -94,7 +117,6 @@ export default function Sidebar({
           </button>
         ))}
       </nav>
-
     </aside>
   )
 }

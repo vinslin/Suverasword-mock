@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Calculator, ChevronDown, Download, Info, IndianRupee, Building2, MapPin, TrendingUp, Sparkles, Loader, ExternalLink, AlertCircle } from 'lucide-react'
-import { postChatMessage } from '../lib/api'
+import { aiQuery } from '../lib/api'
 
 // ─── Fee tables ────────────────────────────────────────────────────────────────
 
@@ -147,7 +147,7 @@ function TableHeader() {
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
-export default function CostEstimatorPage() {
+export default function CostEstimatorPage({ companyId }) {
   const [type, setType] = useState('pvt')
   const [state, setState] = useState('Karnataka')
   const [capital, setCapital] = useState(100000)
@@ -202,13 +202,9 @@ Fill in the actual amounts. Do not write anything outside the table.`
     setAiResult(null)
     setAiSources([])
     try {
-      const res = await postChatMessage(prompt)
-      // response is { messages: [...], company, registrations }
-      // pick the last bot message that has text
-      const botMsgs = (res.messages ?? []).filter((m) => m.sender === 'bot' && m.text)
-      const last = botMsgs[botMsgs.length - 1]
-      setAiResult(last?.text ?? 'No response received.')
-      setAiSources(last?.sources ?? [])
+      const res = await aiQuery(prompt)
+      setAiResult(res.text || 'No response received.')
+      setAiSources(res.sources ?? [])
     } catch (err) {
       setAiError(err.message || 'AI estimate failed')
     } finally {

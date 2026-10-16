@@ -8,11 +8,10 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.document import Document
 from app.schemas.document import DocumentOut
-from app.services.seed import DEMO_COMPANY_ID
 
 UPLOADS_ROOT = Path(__file__).resolve().parents[3] / "uploads"
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/companies/{company_id}/documents", tags=["documents"])
 
 
 def _company_dir(company_id: int) -> Path:
@@ -23,6 +22,7 @@ def _company_dir(company_id: int) -> Path:
 
 @router.post("/upload", response_model=DocumentOut)
 async def upload_document(
+    company_id: int,
     file: UploadFile = File(...),
     doc_type: str | None = Form(default=None),
     linked_to: str | None = Form(default=None),
@@ -31,13 +31,13 @@ async def upload_document(
 ):
     suffix = Path(file.filename or "file").suffix
     stored_name = f"{uuid.uuid4().hex}{suffix}"
-    dest = _company_dir(DEMO_COMPANY_ID) / stored_name
+    dest = _company_dir(company_id) / stored_name
 
     content = await file.read()
     dest.write_bytes(content)
 
     doc = Document(
-        company_id=DEMO_COMPANY_ID,
+        company_id=company_id,
         director_id=director_id,
         filename=stored_name,
         original_name=file.filename or stored_name,
@@ -52,19 +52,19 @@ async def upload_document(
 
 
 @router.get("", response_model=list[DocumentOut])
-def list_documents(db: Session = Depends(get_db)):
+def list_documents(company_id: int, db: Session = Depends(get_db)):
     return (
         db.query(Document)
-        .filter(Document.company_id == DEMO_COMPANY_ID)
+        .filter(Document.company_id == company_id)
         .order_by(Document.uploaded_at.desc())
         .all()
     )
 
 
 @router.get("/{document_id}/download")
-def download_document(document_id: int, db: Session = Depends(get_db)):
+def download_document(company_id: int, document_id: int, db: Session = Depends(get_db)):
     doc = db.get(Document, document_id)
-    if doc is None or doc.company_id != DEMO_COMPANY_ID:
+    if doc is None or doc.company_id != company_id:
         raise HTTPException(status_code=404, detail="Document not found")
     path = Path(doc.file_path)
     if not path.exists():
@@ -73,9 +73,9 @@ def download_document(document_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{document_id}")
-def delete_document(document_id: int, db: Session = Depends(get_db)):
+def delete_document(company_id: int, document_id: int, db: Session = Depends(get_db)):
     doc = db.get(Document, document_id)
-    if doc is None or doc.company_id != DEMO_COMPANY_ID:
+    if doc is None or doc.company_id != company_id:
         raise HTTPException(status_code=404, detail="Document not found")
     path = Path(doc.file_path)
     if path.exists():

@@ -54,14 +54,15 @@ function ScoreRing({ score }) {
   )
 }
 
-export default function CompletenessCard({ refreshKey }) {
+export default function CompletenessCard({ companyId, refreshKey }) {
   const [data, setData] = useState(null)
 
   useEffect(() => {
-    getCompleteness()
+    if (!companyId) return
+    getCompleteness(companyId)
       .then(setData)
       .catch(() => {})
-  }, [refreshKey])
+  }, [companyId, refreshKey])
 
   if (!data) return null
 

@@ -216,7 +216,7 @@ function TypingBubble() {
   )
 }
 
-export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated, onDocumentUploaded }) {
+export default function ChatAssistant({ companyId, onCompanyUpdated, onRegistrationsUpdated, onDocumentUploaded }) {
   const [messages, setMessages] = useState([])
   const [nameDecision, setNameDecision] = useState(null)
   const [input, setInput] = useState('')
@@ -226,10 +226,11 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    getChatHistory()
+    if (!companyId) return
+    getChatHistory(companyId)
       .then((res) => setMessages(res.messages))
       .catch(() => {})
-  }, [])
+  }, [companyId])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -242,7 +243,7 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
   async function sendToBackend(text) {
     setTyping(true)
     try {
-      const res = await postChatMessage(text)
+      const res = await postChatMessage(companyId, text)
       setMessages((prev) => [...prev, ...res.messages])
       onCompanyUpdated?.(res.company)
       onRegistrationsUpdated?.(res.registrations)
@@ -271,7 +272,7 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
     if (file) {
       const { docType, linkedTo } = inferDocMeta(displayText)
       try {
-        const doc = await uploadDocument(file, { docType, linkedTo })
+        const doc = await uploadDocument(companyId, file, { docType, linkedTo })
         onDocumentUploaded?.(doc)
         pushMessage({
           sender: 'bot',

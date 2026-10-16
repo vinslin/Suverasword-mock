@@ -27,68 +27,94 @@ async function request(path, options = {}) {
   return res.json()
 }
 
-export function getCompany() {
-  return request('/company')
+// ── Companies ──────────────────────────────────────────────────────────────
+
+export function listCompanies() {
+  return request('/companies')
 }
 
-export function getCompleteness() {
-  return request('/company/completeness')
+export function createCompany() {
+  return request('/companies', { method: 'POST' })
 }
 
-export function updateCompany(payload) {
-  return request('/company', { method: 'PUT', body: JSON.stringify(payload) })
+// ── Company detail ─────────────────────────────────────────────────────────
+
+export function getCompany(companyId) {
+  return request(`/companies/${companyId}`)
 }
 
-export function getRegistrations() {
-  return request('/registrations')
+export function getCompleteness(companyId) {
+  return request(`/companies/${companyId}/completeness`)
 }
 
-export function advanceRegistration(id) {
-  return request(`/registrations/${encodeURIComponent(id)}/advance`, { method: 'POST' })
+export function updateCompany(companyId, payload) {
+  return request(`/companies/${companyId}`, { method: 'PUT', body: JSON.stringify(payload) })
 }
 
-export function getChatHistory(limit = 50) {
-  return request(`/chat/history?limit=${limit}`)
+// ── Registrations ──────────────────────────────────────────────────────────
+
+export function getRegistrations(companyId) {
+  return request(`/companies/${companyId}/registrations`)
 }
 
-export function postChatMessage(text) {
-  return request('/chat', { method: 'POST', body: JSON.stringify({ text }) })
+export function advanceRegistration(companyId, id) {
+  return request(`/companies/${companyId}/registrations/${encodeURIComponent(id)}/advance`, { method: 'POST' })
 }
 
-export function getDirectors() {
-  return request('/directors')
+// ── Chat ───────────────────────────────────────────────────────────────────
+
+export function getChatHistory(companyId, limit = 50) {
+  return request(`/companies/${companyId}/chat/history?limit=${limit}`)
 }
 
-export function addDirector(payload) {
-  return request('/directors', { method: 'POST', body: JSON.stringify(payload) })
+export function postChatMessage(companyId, text) {
+  return request(`/companies/${companyId}/chat`, { method: 'POST', body: JSON.stringify({ text }) })
 }
 
-export function updateDirector(id, payload) {
-  return request(`/directors/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) })
+// ── AI (ephemeral, no history) ─────────────────────────────────────────────
+
+export function aiQuery(text) {
+  return request('/ai/query', { method: 'POST', body: JSON.stringify({ text }) })
 }
 
-export function deleteDirector(id) {
-  return request(`/directors/${encodeURIComponent(id)}`, { method: 'DELETE' })
+// ── Directors ──────────────────────────────────────────────────────────────
+
+export function getDirectors(companyId) {
+  return request(`/companies/${companyId}/directors`)
 }
 
-export function getDocuments() {
-  return request('/documents')
+export function addDirector(companyId, payload) {
+  return request(`/companies/${companyId}/directors`, { method: 'POST', body: JSON.stringify(payload) })
 }
 
-export function uploadDocument(file, { docType, linkedTo, directorId } = {}) {
+export function updateDirector(companyId, id, payload) {
+  return request(`/companies/${companyId}/directors/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) })
+}
+
+export function deleteDirector(companyId, id) {
+  return request(`/companies/${companyId}/directors/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// ── Documents ──────────────────────────────────────────────────────────────
+
+export function getDocuments(companyId) {
+  return request(`/companies/${companyId}/documents`)
+}
+
+export function uploadDocument(companyId, file, { docType, linkedTo, directorId } = {}) {
   const form = new FormData()
   form.append('file', file)
   if (docType) form.append('doc_type', docType)
   if (linkedTo) form.append('linked_to', linkedTo)
   if (directorId != null) form.append('director_id', String(directorId))
-  return request('/documents/upload', { method: 'POST', headers: {}, body: form })
+  return request(`/companies/${companyId}/documents/upload`, { method: 'POST', headers: {}, body: form })
 }
 
-export function downloadDocumentUrl(id) {
+export function downloadDocumentUrl(companyId, id) {
   const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
-  return `${base}/documents/${encodeURIComponent(id)}/download`
+  return `${base}/companies/${companyId}/documents/${encodeURIComponent(id)}/download`
 }
 
-export function deleteDocument(id) {
-  return request(`/documents/${encodeURIComponent(id)}`, { method: 'DELETE' })
+export function deleteDocument(companyId, id) {
+  return request(`/companies/${companyId}/documents/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

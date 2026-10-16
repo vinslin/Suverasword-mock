@@ -40,7 +40,7 @@ function fileIcon(name) {
   return '📎'
 }
 
-function UploadDrawer({ onUploaded, onClose }) {
+function UploadDrawer({ companyId, onUploaded, onClose }) {
   const [file, setFile] = useState(null)
   const [docType, setDocType] = useState('')
   const [linkedTo, setLinkedTo] = useState('company')
@@ -60,7 +60,7 @@ function UploadDrawer({ onUploaded, onClose }) {
     setUploading(true)
     setError(null)
     try {
-      const doc = await uploadDocument(file, { docType: docType || undefined, linkedTo: linkedTo || undefined })
+      const doc = await uploadDocument(companyId, file, { docType: docType || undefined, linkedTo: linkedTo || undefined })
       onUploaded(doc)
     } catch (err) {
       setError(err.message || 'Upload failed')
@@ -148,17 +148,18 @@ function UploadDrawer({ onUploaded, onClose }) {
 
 const REQUIRED_DOC_TYPES = ['pan_card', 'aadhaar', 'address_proof']
 
-export default function DocumentsPanel({ refreshKey }) {
+export default function DocumentsPanel({ companyId, refreshKey }) {
   const [documents, setDocuments] = useState([])
   const [showUpload, setShowUpload] = useState(false)
   const [deleting, setDeleting] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    getDocuments()
+    if (!companyId) return
+    getDocuments(companyId)
       .then(setDocuments)
       .catch(() => {})
-  }, [refreshKey])
+  }, [companyId, refreshKey])
 
   function handleUploaded(doc) {
     setDocuments((prev) => [doc, ...prev])
@@ -170,7 +171,7 @@ export default function DocumentsPanel({ refreshKey }) {
     setDeleting(id)
     setError(null)
     try {
-      await deleteDocument(id)
+      await deleteDocument(companyId, id)
       setDocuments((prev) => prev.filter((d) => d.id !== id))
     } catch (err) {
       setError(err.message || 'Failed to delete document')
@@ -204,7 +205,7 @@ export default function DocumentsPanel({ refreshKey }) {
 
       {showUpload && (
         <div className="mb-3">
-          <UploadDrawer onUploaded={handleUploaded} onClose={() => setShowUpload(false)} />
+          <UploadDrawer companyId={companyId} onUploaded={handleUploaded} onClose={() => setShowUpload(false)} />
         </div>
       )}
 
@@ -241,7 +242,7 @@ export default function DocumentsPanel({ refreshKey }) {
               </div>
               <div className="flex gap-1 shrink-0">
                 <a
-                  href={downloadDocumentUrl(doc.id)}
+                  href={downloadDocumentUrl(companyId, doc.id)}
                   target="_blank"
                   rel="noreferrer"
                   className="text-gray-400 hover:text-indigo-600 p-1"

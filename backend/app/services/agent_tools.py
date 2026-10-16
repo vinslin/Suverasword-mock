@@ -379,8 +379,27 @@ def tool_create_company(
     authorized_capital: int | None = None,
     paid_up_capital: int | None = None,
 ) -> dict:
-    if db.get(Company, company_id) is not None:
-        raise ValueError("A company already exists — use reserve_company_name to rename it instead")
+    existing = db.get(Company, company_id)
+    if existing is not None:
+        if existing.name:
+            # Real company already named — just rename via reserve flow
+            raise ValueError("A company already exists — use reserve_company_name to rename it instead")
+        # Blank shell pre-created by the API — fill it in
+        company = existing
+        company.name = name
+        company.status_tag = "Name Reserved"
+        company.type = type or "Private Limited Company"
+        company.registered_office = registered_office or ""
+        company.business_activity = business_activity or ""
+        if authorized_capital is not None:
+            company.authorized_capital = authorized_capital
+        if paid_up_capital is not None:
+            company.paid_up_capital = paid_up_capital
+        if incorporation_state is not None:
+            company.incorporation_state = incorporation_state
+        company.journey_step = 1
+        db.commit()
+        return tool_get_registration_snapshot(db, company_id)
 
     company = Company(
         id=company_id,
@@ -495,8 +514,8 @@ def tool_reserve_company_name(db: Session, company_id: int, name: str) -> dict:
 
 
 def tool_advance_registration_status(db: Session, company_id: int, registration_id: str) -> dict:
-    registration = db.get(Registration, registration_id)
-    if registration is None or registration.company_id != company_id:
+    registration = db.get(Registration, {"id": registration_id, "company_id": company_id})
+    if registration is None:
         raise ValueError(f"No registration '{registration_id}' for this company")
     next_status = STATUS_CYCLE[registration.status]
     registration.status = next_status
@@ -571,6 +590,7 @@ def tool_get_registration_snapshot(db: Session, company_id: int) -> dict:
     )
     return {
         "company": {
+            "id": company.id,
             "name": company.name,
             "statusTag": company.status_tag,
             "type": company.type,

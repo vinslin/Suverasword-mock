@@ -4,25 +4,24 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.director import Director
 from app.schemas.director import DirectorCreate, DirectorOut
-from app.services.seed import DEMO_COMPANY_ID
 
-router = APIRouter(prefix="/directors", tags=["directors"])
+router = APIRouter(prefix="/companies/{company_id}/directors", tags=["directors"])
 
 
 @router.get("", response_model=list[DirectorOut])
-def list_directors(db: Session = Depends(get_db)):
+def list_directors(company_id: int, db: Session = Depends(get_db)):
     return (
         db.query(Director)
-        .filter(Director.company_id == DEMO_COMPANY_ID)
+        .filter(Director.company_id == company_id)
         .order_by(Director.id)
         .all()
     )
 
 
 @router.post("", response_model=DirectorOut)
-def add_director(payload: DirectorCreate, db: Session = Depends(get_db)):
+def add_director(company_id: int, payload: DirectorCreate, db: Session = Depends(get_db)):
     director = Director(
-        company_id=DEMO_COMPANY_ID,
+        company_id=company_id,
         name=payload.name,
         din=payload.din,
         pan=payload.pan,
@@ -39,9 +38,9 @@ def add_director(payload: DirectorCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{director_id}", response_model=DirectorOut)
-def update_director(director_id: int, payload: DirectorCreate, db: Session = Depends(get_db)):
+def update_director(company_id: int, director_id: int, payload: DirectorCreate, db: Session = Depends(get_db)):
     director = db.get(Director, director_id)
-    if director is None or director.company_id != DEMO_COMPANY_ID:
+    if director is None or director.company_id != company_id:
         raise HTTPException(status_code=404, detail="Director not found")
     director.name = payload.name
     director.din = payload.din
@@ -57,9 +56,9 @@ def update_director(director_id: int, payload: DirectorCreate, db: Session = Dep
 
 
 @router.delete("/{director_id}")
-def delete_director(director_id: int, db: Session = Depends(get_db)):
+def delete_director(company_id: int, director_id: int, db: Session = Depends(get_db)):
     director = db.get(Director, director_id)
-    if director is None or director.company_id != DEMO_COMPANY_ID:
+    if director is None or director.company_id != company_id:
         raise HTTPException(status_code=404, detail="Director not found")
     db.delete(director)
     db.commit()

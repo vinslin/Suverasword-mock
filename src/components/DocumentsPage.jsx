@@ -3,7 +3,7 @@ import {
   FileText, Upload, Download, Trash2, AlertTriangle,
   Loader, ChevronDown, Building2, Search, X,
 } from 'lucide-react'
-import { getDocuments, getCompany, uploadDocument, downloadDocumentUrl, deleteDocument } from '../lib/api'
+import { getDocuments, uploadDocument, downloadDocumentUrl, deleteDocument } from '../lib/api'
 
 const DOC_TYPE_OPTIONS = [
   { value: 'pan_card', label: 'PAN Card' },
@@ -45,7 +45,7 @@ function fileIcon(name) {
   return '📎'
 }
 
-function UploadModal({ onUploaded, onClose }) {
+function UploadModal({ companyId, onUploaded, onClose }) {
   const [file, setFile] = useState(null)
   const [docType, setDocType] = useState('')
   const [linkedTo, setLinkedTo] = useState('company')
@@ -65,7 +65,7 @@ function UploadModal({ onUploaded, onClose }) {
     setUploading(true)
     setError(null)
     try {
-      const doc = await uploadDocument(file, { docType: docType || undefined, linkedTo: linkedTo || undefined })
+      const doc = await uploadDocument(companyId, file, { docType: docType || undefined, linkedTo: linkedTo || undefined })
       onUploaded(doc)
     } catch (err) {
       setError(err.message || 'Upload failed')
@@ -159,47 +159,24 @@ function UploadModal({ onUploaded, onClose }) {
   )
 }
 
-export default function DocumentsPage() {
-  const [companies, setCompanies] = useState([])
-  const [selectedCompany, setSelectedCompany] = useState(null)
+export default function DocumentsPage({ companyId }) {
   const [documents, setDocuments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [docsLoading, setDocsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [deleting, setDeleting] = useState(null)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
 
-  // Load company list on mount
   useEffect(() => {
-    async function loadCompanies() {
-      setLoading(true)
-      try {
-        const company = await getCompany()
-        if (company) {
-          setCompanies([company])
-          setSelectedCompany(company)
-        }
-      } catch {
-        // no company yet
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadCompanies()
-  }, [])
-
-  // Load documents whenever selected company changes
-  useEffect(() => {
-    if (!selectedCompany) return
-    setDocsLoading(true)
+    if (!companyId) return
+    setLoading(true)
     setError(null)
-    getDocuments()
+    getDocuments(companyId)
       .then(setDocuments)
       .catch((err) => setError(err.message || 'Failed to load documents'))
-      .finally(() => setDocsLoading(false))
-  }, [selectedCompany])
+      .finally(() => setLoading(false))
+  }, [companyId])
 
   function handleUploaded(doc) {
     setDocuments((prev) => [doc, ...prev])
@@ -211,7 +188,7 @@ export default function DocumentsPage() {
     setDeleting(id)
     setError(null)
     try {
-      await deleteDocument(id)
+      await deleteDocument(companyId, id)
       setDocuments((prev) => prev.filter((d) => d.id !== id))
     } catch (err) {
       setError(err.message || 'Failed to delete document')
@@ -247,7 +224,7 @@ export default function DocumentsPage() {
             <h1 className="text-[18px] font-semibold text-gray-900">Documents</h1>
             <p className="text-[13px] text-gray-400 mt-0.5">Upload and manage your company documents</p>
           </div>
-          {selectedCompany && (
+          {companyId && (
             <button
               onClick={() => setShowUpload(true)}
               className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-medium px-4 py-2.5 rounded-xl transition-colors"
@@ -257,44 +234,7 @@ export default function DocumentsPage() {
           )}
         </div>
 
-        {/* Company Selector */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <Building2 size={18} className="text-indigo-500 shrink-0" />
-            <div className="flex-1">
-              <div className="text-[11.5px] text-gray-400 mb-1 font-medium uppercase tracking-wide">Company</div>
-              {companies.length === 0 ? (
-                <div className="text-[13.5px] text-gray-400">No company found — start one via the AI Assistant</div>
-              ) : (
-                <div className="relative">
-                  <select
-                    value={selectedCompany?.id ?? ''}
-                    onChange={(e) => {
-                      const c = companies.find((c) => String(c.id) === e.target.value)
-                      setSelectedCompany(c ?? null)
-                      setSearch('')
-                      setFilterType('')
-                    }}
-                    className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-2.5 pr-10 text-[13.5px] font-medium text-gray-900 outline-none focus:border-indigo-400 bg-white cursor-pointer"
-                  >
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} — {c.type}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
-              )}
-            </div>
-            {selectedCompany && (
-              <div className="shrink-0 text-right">
-                <div className="text-[11.5px] text-gray-400">Total documents</div>
-                <div className="text-[20px] font-bold text-indigo-600">{documents.length}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {selectedCompany && (
+        {companyId && (
           <>
             {/* Missing docs warning */}
             {missingRequired.length > 0 && documents.length > 0 && (
@@ -345,7 +285,7 @@ export default function DocumentsPage() {
                 <span>Actions</span>
               </div>
 
-              {docsLoading ? (
+              {loading ? (
                 <div className="flex items-center justify-center py-16 text-gray-400">
                   <Loader size={18} className="animate-spin mr-2" /> Loading documents…
                 </div>
@@ -405,7 +345,7 @@ export default function DocumentsPage() {
                       {/* Actions */}
                       <div className="flex items-center gap-1 shrink-0">
                         <a
-                          href={downloadDocumentUrl(doc.id)}
+                          href={downloadDocumentUrl(companyId, doc.id)}
                           target="_blank"
                           rel="noreferrer"
                           className="flex items-center gap-1.5 text-[12px] font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
@@ -439,7 +379,7 @@ export default function DocumentsPage() {
       </div>
 
       {showUpload && (
-        <UploadModal onUploaded={handleUploaded} onClose={() => setShowUpload(false)} />
+        <UploadModal companyId={companyId} onUploaded={handleUploaded} onClose={() => setShowUpload(false)} />
       )}
     </div>
   )

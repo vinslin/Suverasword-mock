@@ -5,7 +5,7 @@ import {
   Loader, ExternalLink, Scale, Building2, Users, Info,
   Calendar, AlertCircle, Send,
 } from 'lucide-react'
-import { getDocuments, postChatMessage } from '../lib/api'
+import { getDocuments, aiQuery as aiQueryApi } from '../lib/api'
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -232,7 +232,7 @@ const TABS = [
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
-export default function PoliciesPage({ company }) {
+export default function PoliciesPage({ company, companyId }) {
   const [tab, setTab] = useState('overview')
   const [documents, setDocuments] = useState([])
   const [docsLoaded, setDocsLoaded] = useState(false)
@@ -249,10 +249,11 @@ export default function PoliciesPage({ company }) {
   const [aiError, setAiError] = useState(null)
 
   useEffect(() => {
-    getDocuments()
+    if (!companyId) { setDocsLoaded(true); return }
+    getDocuments(companyId)
       .then((docs) => { setDocuments(docs); setDocsLoaded(true) })
       .catch(() => setDocsLoaded(true))
-  }, [])
+  }, [companyId])
 
   // ── Policy Health Check data ──
   const uploadedTypes = new Set(documents.map((d) => d.docType).filter(Boolean))
@@ -284,13 +285,11 @@ export default function PoliciesPage({ company }) {
     setAiSources([])
     setAiError(null)
     try {
-      const res = await postChatMessage(`Legal question about Indian company law: ${query}. Search the web and give a clear, accurate answer with specific references to the relevant act or rule.`)
-      const botMsgs = (res.messages ?? []).filter((m) => m.sender === 'bot' && m.text)
-      const last = botMsgs[botMsgs.length - 1]
-      setAiResult(last?.text ?? 'No response received.')
-      setAiSources(last?.sources ?? [])
+      const res = await aiQueryApi(`Legal question about Indian company law: ${query}. Search the web and give a clear, accurate answer with specific references to the relevant act or rule.`)
+      setAiResult(res.text || 'No response received.')
+      setAiSources(res.sources ?? [])
     } catch (err) {
-      setAiError(err.message || 'AI advisor failed')
+      setAiError(typeof err.message === 'string' ? err.message : 'AI advisor failed')
     } finally {
       setAiLoading(false)
     }

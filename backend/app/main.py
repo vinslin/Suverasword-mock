@@ -5,7 +5,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.database.base import Base
 from app.database.session import engine
-from app.routers import chat, company, directors, documents, health, registrations
+from app.routers import ai, chat, companies, company, directors, documents, health, registrations
 
 app = FastAPI(title="Company Registration Assistant API")
 
@@ -18,6 +18,8 @@ app.add_middleware(
 )
 
 app.include_router(health.router, prefix="/api")
+app.include_router(ai.router, prefix="/api")
+app.include_router(companies.router, prefix="/api")
 app.include_router(company.router, prefix="/api")
 app.include_router(registrations.router, prefix="/api")
 app.include_router(directors.router, prefix="/api")
@@ -26,16 +28,14 @@ app.include_router(chat.router, prefix="/api")
 
 
 def _apply_light_migrations() -> None:
-    """No Alembic for this project yet — just enough to add a column that a
-    prior deploy's create_all() already missed on an existing table."""
     if settings.database_url.startswith("sqlite"):
         return
     with engine.begin() as conn:
+        # Add journey_step column if missing (pre-existing installs)
         conn.execute(
             text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS journey_step INTEGER NOT NULL DEFAULT 3")
         )
-        # chat_messages.company_id used to be a hard FK to companies.id, which made
-        # it impossible to save the first onboarding message before a company exists.
+        # Drop old FK so chat messages can be stored before a company is created
         conn.execute(
             text("ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_company_id_fkey")
         )
@@ -43,6 +43,13 @@ def _apply_light_migrations() -> None:
             conn.execute(
                 text(f"ALTER TABLE companies ADD COLUMN IF NOT EXISTS {col} VARCHAR NOT NULL DEFAULT ''")
             )
+        # Migrate registrations to composite PK (id, company_id)
+        conn.execute(
+            text("ALTER TABLE registrations DROP CONSTRAINT IF EXISTS registrations_pkey")
+        )
+        conn.execute(
+            text("ALTER TABLE registrations ADD PRIMARY KEY (id, company_id)")
+        )
 
 
 @app.on_event("startup")

@@ -5,30 +5,29 @@ from app.database.session import get_db
 from app.models.company import Company
 from app.schemas.company import CompanyOut, CompanyUpdateRequest
 from app.services.agent_tools import tool_get_completeness_score
-from app.services.seed import DEMO_COMPANY_ID
 
-router = APIRouter(prefix="/company", tags=["company"])
+router = APIRouter(prefix="/companies/{company_id}", tags=["company"])
 
 
 @router.get("/completeness")
-def get_completeness(db: Session = Depends(get_db)):
+def get_completeness(company_id: int, db: Session = Depends(get_db)):
     try:
-        return tool_get_completeness_score(db, DEMO_COMPANY_ID)
+        return tool_get_completeness_score(db, company_id)
     except ValueError:
         return {"score": 0, "completed": 0, "total": 9, "checks": {}, "missing": ["company not created yet"]}
 
 
 @router.get("", response_model=CompanyOut, response_model_by_alias=True)
-def get_company(db: Session = Depends(get_db)):
-    company = db.get(Company, DEMO_COMPANY_ID)
+def get_company(company_id: int, db: Session = Depends(get_db)):
+    company = db.get(Company, company_id)
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
     return company
 
 
 @router.put("", response_model=CompanyOut, response_model_by_alias=True)
-def update_company(payload: CompanyUpdateRequest, db: Session = Depends(get_db)):
-    company = db.get(Company, DEMO_COMPANY_ID)
+def update_company(company_id: int, payload: CompanyUpdateRequest, db: Session = Depends(get_db)):
+    company = db.get(Company, company_id)
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
 
