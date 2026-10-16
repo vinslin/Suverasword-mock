@@ -25,6 +25,8 @@ import Modal from './components/Modal'
 import PlaceholderPage from './components/PlaceholderPage'
 import DocumentsPage from './components/DocumentsPage'
 import CostEstimatorPage from './components/CostEstimatorPage'
+import PoliciesPage from './components/PoliciesPage'
+import ComplianceCalendarPage from './components/ComplianceCalendarPage'
 import DirectorsPanel from './components/DirectorsPanel'
 import DocumentsPanel from './components/DocumentsPanel'
 import CompletenessCard from './components/CompletenessCard'
@@ -276,6 +278,10 @@ export default function App() {
           <DocumentsPage />
         ) : activeNav === 'cost' ? (
           <CostEstimatorPage />
+        ) : activeNav === 'calendar' ? (
+          <ComplianceCalendarPage />
+        ) : activeNav === 'policies' ? (
+          <PoliciesPage company={company} />
         ) : (
           <PlaceholderPage {...(placeholderMeta[activeNav] ?? placeholderMeta.home)} />
         )}
