@@ -14,6 +14,82 @@ import {
 import { quickChips } from '../data/mockData'
 import { getChatHistory, postChatMessage, uploadDocument } from '../lib/api'
 
+function renderInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/)
+  return parts.map((p, i) =>
+    /^\*\*[^*]+\*\*$/.test(p)
+      ? <strong key={i} className="font-semibold text-gray-900">{p.slice(2, -2)}</strong>
+      : p
+  )
+}
+
+function ChatMarkdown({ text }) {
+  const lines = text.split('\n')
+  const result = []
+  let tableLines = []
+  let i = 0
+
+  function flushTable() {
+    if (tableLines.length < 2) { tableLines = []; return }
+    const parse = (row) => row.split('|').map(c => c.trim()).filter(Boolean)
+    const headers = parse(tableLines[0])
+    const rows = tableLines.slice(2).map(parse)
+    result.push(
+      <div key={`t-${result.length}`} className="overflow-x-auto rounded-xl border border-gray-200 my-2 w-full">
+        <table className="w-full text-[12.5px]">
+          <thead>
+            <tr className="bg-indigo-50 border-b border-indigo-100">
+              {headers.map((h, j) => (
+                <th key={j} className="px-3 py-2 text-left font-semibold text-indigo-800 whitespace-nowrap">{renderInline(h)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => {
+              const isTotal = row[0]?.toLowerCase().includes('total')
+              return (
+                <tr key={ri} className={`border-b border-gray-100 last:border-0 ${isTotal ? 'bg-indigo-50 font-semibold' : 'hover:bg-gray-50'}`}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} className={`px-3 py-2 ${isTotal ? 'text-indigo-800' : 'text-gray-700'} ${ci > 0 ? 'whitespace-nowrap' : ''}`}>
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+    tableLines = []
+  }
+
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.trim().startsWith('|')) {
+      tableLines.push(line)
+    } else {
+      if (tableLines.length) flushTable()
+      if (!line.trim()) { result.push(<div key={i} className="h-1" />); i++; continue }
+      if (/^###\s/.test(line)) { result.push(<div key={i} className="font-semibold text-gray-900 text-[13px] mt-2">{renderInline(line.replace(/^###\s/, ''))}</div>); i++; continue }
+      if (/^##\s/.test(line)) { result.push(<div key={i} className="font-bold text-gray-900 text-[14px] mt-3">{renderInline(line.replace(/^##\s/, ''))}</div>); i++; continue }
+      if (/^[\-\*]\s/.test(line.trim())) {
+        result.push(<div key={i} className="flex gap-2 pl-1"><span className="text-indigo-400 shrink-0">•</span><span>{renderInline(line.trim().replace(/^[\-\*]\s/, ''))}</span></div>)
+        i++; continue
+      }
+      if (/^\d+\.\s/.test(line.trim())) {
+        const m = line.trim().match(/^(\d+)\.\s(.*)/)
+        result.push(<div key={i} className="flex gap-2 pl-1"><span className="text-indigo-500 font-semibold shrink-0 min-w-[16px]">{m[1]}.</span><span>{renderInline(m[2])}</span></div>)
+        i++; continue
+      }
+      result.push(<p key={i}>{renderInline(line)}</p>)
+    }
+    i++
+  }
+  if (tableLines.length) flushTable()
+  return <div className="space-y-1 text-[13px] text-gray-700">{result}</div>
+}
+
 function inferDocMeta(text) {
   const t = text.toLowerCase()
   let docType
@@ -274,8 +350,8 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
               <BotAvatar />
               <div className="min-w-0">
                 {m.type === 'text' && (
-                  <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-gray-700 max-w-[520px] whitespace-pre-line">
-                    {m.text}
+                  <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[560px]">
+                    <ChatMarkdown text={m.text} />
                   </div>
                 )}
                 {m.type === 'websearch' && <WebSearchCard message={m} />}
@@ -284,8 +360,8 @@ export default function ChatAssistant({ onCompanyUpdated, onRegistrationsUpdated
                 )}
                 {m.type === 'confirm' && (
                   <div>
-                    <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13.5px] text-gray-700 max-w-[520px] mb-2.5">
-                      {m.text}
+                    <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[560px] mb-2.5">
+                      <ChatMarkdown text={m.text} />
                     </div>
                     <div className="flex gap-2.5">
                       <button
