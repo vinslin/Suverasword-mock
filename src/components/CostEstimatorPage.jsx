@@ -161,7 +161,42 @@ export default function CostEstimatorPage() {
 
   async function handleAiEstimate() {
     const typLabel = COMPANY_TYPES.find((c) => c.value === type)?.label ?? type
-    const prompt = `Search the web and provide the current official government fee breakdown for registering a ${typLabel} in ${state}, India with an authorized capital of ₹${capital.toLocaleString('en-IN')}. Include: (1) MCA/ROC filing fee, (2) stamp duty on MoA and AoA specific to ${state}, (3) DIN fees, (4) PAN/TAN fees, (5) professional CA/CS charges estimate, (6) any state-specific fees. Give exact rupee amounts where available.`
+    const capitalCr = (capital / 10000000).toFixed(2)
+    const capitalL = (capital / 100000).toFixed(0)
+    const capitalDisplay = capital >= 10000000
+      ? `₹${capitalCr} crore`
+      : `₹${capitalL} lakh`
+
+    // Describe the exact capital slab so the AI fetches the correct fee tier
+    const slabDesc = capital <= 100000 ? 'up to ₹1 lakh (slab: ≤ ₹1L)'
+      : capital <= 500000 ? `₹${capitalL} lakh (slab: ₹1L–₹5L)`
+      : capital <= 1000000 ? `₹${capitalL} lakh (slab: ₹5L–₹10L)`
+      : capital <= 2500000 ? `₹${capitalL} lakh (slab: ₹10L–₹25L)`
+      : capital <= 10000000 ? `${capitalDisplay} (slab: ₹25L–₹1Cr)`
+      : `${capitalDisplay} (slab: above ₹1Cr)`
+
+    const prompt = `You are a company registration fee calculator. Search the web for current fees.
+
+TASK: Return the fee breakdown for registering a ${typLabel} in ${state}, India with authorized capital of ${capitalDisplay} (${slabDesc}).
+
+CRITICAL INSTRUCTION: Your ENTIRE response must be ONLY a markdown table. No introductory sentences, no bullet points, no paragraphs, no explanations before or after. Start your response directly with the | character.
+
+Use EXACTLY this format:
+
+| Fee Item | Govt Fee (₹) | Professional Fee (₹) | Notes |
+|---|---|---|---|
+| MCA / ROC Filing Fee (SPICe+) | [exact amount for ${capitalDisplay} slab] | 0 | Based on authorized capital slab |
+| Stamp Duty on MoA & AoA | [${state}-specific amount for ${capitalDisplay}] | 0 | ${state} rate |
+| Name Reservation (RUN Form) | 1000 | 0 | Optional |
+| DIN Application | 0 | 0 | Included in SPICe+ |
+| PAN & TAN Application | 143 | 0 | Auto via SPICe+ |
+| Digital Signature Certificate | [amount] | 0 | Per director |
+| CA / CS Professional Charges | 0 | [range for ${capitalDisplay}] | Varies by provider |
+| Professional Tax Registration | 2500 | 1000 | ${state}-specific |
+| Shop & Establishment | 2000 | 1000 | ${state}-specific |
+| **TOTAL** | **[sum]** | **[sum]** | **Approximate** |
+
+Fill in the actual amounts. Do not write anything outside the table.`
     setAiLoading(true)
     setAiError(null)
     setAiResult(null)
@@ -509,44 +544,70 @@ export default function CostEstimatorPage() {
 
 function MarkdownText({ text }) {
   const lines = text.split('\n')
-  return (
-    <div className="space-y-1.5">
-      {lines.map((line, i) => {
-        if (!line.trim()) return <div key={i} className="h-1" />
+  const result = []
+  let tableLines = []
+  let i = 0
 
-        // Heading: ### or ##
-        if (/^###\s/.test(line)) {
-          return <div key={i} className="font-semibold text-gray-900 text-[14px] mt-2">{renderInline(line.replace(/^###\s/, ''))}</div>
-        }
-        if (/^##\s/.test(line)) {
-          return <div key={i} className="font-bold text-gray-900 text-[15px] mt-3">{renderInline(line.replace(/^##\s/, ''))}</div>
-        }
+  function flushTable() {
+    if (tableLines.length < 2) { tableLines = []; return }
+    const parse = (row) => row.split('|').map(c => c.trim()).filter(Boolean)
+    const headers = parse(tableLines[0])
+    const rows = tableLines.slice(2).map(parse)
+    result.push(
+      <div key={`table-${result.length}`} className="overflow-x-auto rounded-xl border border-gray-200 mt-2 mb-2">
+        <table className="w-full text-[12.5px]">
+          <thead>
+            <tr className="bg-indigo-50 border-b border-indigo-100">
+              {headers.map((h, j) => (
+                <th key={j} className={`px-4 py-2.5 text-left font-semibold text-indigo-800 ${j > 0 ? 'whitespace-nowrap' : ''}`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => {
+              const isTotal = row[0]?.toLowerCase().includes('total')
+              return (
+                <tr key={ri} className={`border-b border-gray-100 last:border-0 ${isTotal ? 'bg-indigo-50 font-semibold' : 'hover:bg-gray-50'}`}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} className={`px-4 py-2.5 ${isTotal ? 'text-indigo-800' : 'text-gray-700'} ${ci > 0 ? 'whitespace-nowrap' : ''}`}>
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+    tableLines = []
+  }
 
-        // Bullet: - or *
-        if (/^[\-\*]\s/.test(line.trim())) {
-          return (
-            <div key={i} className="flex gap-2 pl-2">
-              <span className="text-indigo-400 shrink-0 mt-0.5">•</span>
-              <span>{renderInline(line.trim().replace(/^[\-\*]\s/, ''))}</span>
-            </div>
-          )
-        }
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.trim().startsWith('|')) {
+      tableLines.push(line)
+    } else {
+      if (tableLines.length) flushTable()
+      if (!line.trim()) { result.push(<div key={i} className="h-1" />); i++; continue }
+      if (/^###\s/.test(line)) { result.push(<div key={i} className="font-semibold text-gray-900 text-[14px] mt-2">{renderInline(line.replace(/^###\s/, ''))}</div>); i++; continue }
+      if (/^##\s/.test(line)) { result.push(<div key={i} className="font-bold text-gray-900 text-[15px] mt-3">{renderInline(line.replace(/^##\s/, ''))}</div>); i++; continue }
+      if (/^[\-\*]\s/.test(line.trim())) {
+        result.push(<div key={i} className="flex gap-2 pl-2"><span className="text-indigo-400 shrink-0 mt-0.5">•</span><span>{renderInline(line.trim().replace(/^[\-\*]\s/, ''))}</span></div>)
+        i++; continue
+      }
+      if (/^\d+\.\s/.test(line.trim())) {
+        const m = line.trim().match(/^(\d+)\.\s(.*)/)
+        result.push(<div key={i} className="flex gap-2 pl-2"><span className="text-indigo-500 font-semibold shrink-0 min-w-[18px]">{m[1]}.</span><span>{renderInline(m[2])}</span></div>)
+        i++; continue
+      }
+      result.push(<p key={i} className="text-gray-700">{renderInline(line)}</p>)
+    }
+    i++
+  }
+  if (tableLines.length) flushTable()
 
-        // Numbered list
-        if (/^\d+\.\s/.test(line.trim())) {
-          const [num, ...rest] = line.trim().split(/\.\s/)
-          return (
-            <div key={i} className="flex gap-2 pl-2">
-              <span className="text-indigo-500 font-semibold shrink-0 min-w-[18px]">{num}.</span>
-              <span>{renderInline(rest.join('. '))}</span>
-            </div>
-          )
-        }
-
-        return <p key={i}>{renderInline(line)}</p>
-      })}
-    </div>
-  )
+  return <div className="space-y-1">{result}</div>
 }
 
 function renderInline(text) {
