@@ -366,6 +366,7 @@ export default function App() {
             onSelect={handleSelectCompany}
             onNewCompany={handleNewCompany}
             creating={creatingCompany}
+            activeCompanyId={activeCompanyId}
           />
         ) : activeNav === 'documents' ? (
           <DocumentsPage companyId={activeCompanyId} />
