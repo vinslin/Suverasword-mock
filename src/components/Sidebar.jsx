@@ -7,8 +7,6 @@ import {
   Calendar,
   BookOpen,
   Calculator,
-  HelpCircle,
-  LifeBuoy,
 } from 'lucide-react'
 
 const navItems = [
@@ -22,7 +20,6 @@ const bottomNavItems = [
   { id: 'calendar', label: 'Compliance Calendar', icon: Calendar },
   { id: 'policies', label: 'Policies & Legal', icon: BookOpen },
   { id: 'cost', label: 'Cost Estimator', icon: Calculator },
-  { id: 'help', label: 'Help & Support', icon: HelpCircle },
 ]
 
 export default function Sidebar({
@@ -98,18 +95,6 @@ export default function Sidebar({
         ))}
       </nav>
 
-      <div className="p-4">
-        <div className="rounded-xl bg-indigo-50 p-4">
-          <div className="text-sm font-semibold text-indigo-900 mb-1">Need Help?</div>
-          <div className="text-[12px] text-indigo-900/70 mb-3">Talk to our support team</div>
-          <button
-            onClick={() => onNavigate('help')}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-white border border-indigo-200 text-indigo-700 text-[13px] font-medium py-2"
-          >
-            <LifeBuoy size={15} /> Contact Support
-          </button>
-        </div>
-      </div>
     </aside>
   )
 }
