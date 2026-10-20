@@ -49,6 +49,7 @@ export const journeySteps = [
 ]
 
 export const journeyNextAction = {
+  1: 'Tell the assistant your company name, legal structure, and business activity.',
   2: 'Add at least 2 directors with their DIN, PAN and shareholding details.',
   3: 'Provide registered office address and proof.',
   4: 'Upload identity, address & office proof documents.',

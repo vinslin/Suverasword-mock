@@ -31,6 +31,7 @@ import DirectorsPanel from './components/DirectorsPanel'
 import DocumentsPanel from './components/DocumentsPanel'
 import CompletenessCard from './components/CompletenessCard'
 import MyCompaniesPage from './components/MyCompaniesPage'
+import HomeDashboardPage from './components/HomeDashboardPage'
 import {
   listCompanies,
   createCompany,
@@ -295,8 +296,17 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar
-          title="AI Assistant"
-          subtitle="Online"
+          title={
+            activeNav === 'home'       ? 'Dashboard' :
+            activeNav === 'assistant'  ? 'AI Assistant' :
+            activeNav === 'companies'  ? 'My Companies' :
+            activeNav === 'documents'  ? 'Documents' :
+            activeNav === 'calendar'   ? 'Compliance Calendar' :
+            activeNav === 'policies'   ? 'Policies & Legal' :
+            activeNav === 'cost'       ? 'Cost Estimator' :
+            'AI Assistant'
+          }
+          subtitle={activeNav === 'assistant' ? 'Online' : company?.name ?? 'SuveraSword'}
           onDownloadGuide={handleDownloadGuide}
           user={user}
         />
@@ -360,6 +370,14 @@ export default function App() {
 
             {company && <RegistrationJourney currentStep={company.journeyStep} />}
           </>
+        ) : activeNav === 'home' ? (
+          <HomeDashboardPage
+            companies={companies}
+            company={company}
+            registrations={registrations}
+            onNavigate={setActiveNav}
+            onNewCompany={handleNewCompany}
+          />
         ) : activeNav === 'companies' ? (
           <MyCompaniesPage
             companies={companies}
