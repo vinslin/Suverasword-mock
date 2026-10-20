@@ -475,7 +475,10 @@ def tool_update_company_details(
         company.paid_up_capital = paid_up_capital
     if incorporation_date is not None:
         company.incorporation_date = incorporation_date
-    # Auto-advance: address complete means step 3 DONE → move to step 4 (Documents Upload)
+    # Step 1 done (name + type + activity set) → step 2 (Directors Information)
+    if all([company.name, company.type, company.business_activity]):
+        company.journey_step = max(company.journey_step, 2)
+    # Step 3 done (full address set) → step 4 (Documents Upload)
     if all([company.street, company.city, company.state, company.pincode]):
         company.journey_step = max(company.journey_step, 4)
     db.commit()
@@ -515,6 +518,9 @@ def tool_reserve_company_name(db: Session, company_id: int, name: str) -> dict:
             if registration.id in _DEFAULT_DETAIL_BY_ID:
                 registration.detail = _DEFAULT_DETAIL_BY_ID[registration.id]
 
+    # Step 1 done → step 2 when name + type + business_activity all set
+    if all([company.name, company.type, company.business_activity]):
+        company.journey_step = max(company.journey_step, 2)
     db.commit()
     db.refresh(company)
     return {"name": company.name, "statusTag": company.status_tag, "journeyStep": company.journey_step}
