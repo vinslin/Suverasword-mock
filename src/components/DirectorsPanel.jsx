@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Users, Plus, Pencil, Trash2, AlertTriangle, X } from 'lucide-react'
-import { getDirectors, addDirector, updateDirector, deleteDirector } from '../lib/api'
+import { getDirectors, addDirector, updateDirector, deleteDirector, getCompany } from '../lib/api'
 
 const EMPTY_FORM = {
   name: '',
@@ -155,7 +155,7 @@ function DirectorFormOverlay({ initial, onSubmit, onClose, saving }) {
   )
 }
 
-export default function DirectorsPanel({ companyId, journeyStep }) {
+export default function DirectorsPanel({ companyId, journeyStep, onCompanyUpdated }) {
   const [directors, setDirectors] = useState([])
   const [overlay, setOverlay] = useState(null) // null | 'add' | { director }
   const [saving, setSaving] = useState(false)
@@ -175,6 +175,8 @@ export default function DirectorsPanel({ companyId, journeyStep }) {
       const created = await addDirector(companyId, payload)
       setDirectors((prev) => [...prev, created])
       setOverlay(null)
+      const updated = await getCompany(companyId)
+      onCompanyUpdated?.(updated)
     } catch (err) {
       setError(err.message || 'Failed to add director')
     } finally {
@@ -201,6 +203,8 @@ export default function DirectorsPanel({ companyId, journeyStep }) {
     try {
       await deleteDirector(companyId, id)
       setDirectors((prev) => prev.filter((d) => d.id !== id))
+      const updated = await getCompany(companyId)
+      onCompanyUpdated?.(updated)
     } catch (err) {
       setError(err.message || 'Failed to delete director')
     }

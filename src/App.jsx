@@ -347,7 +347,7 @@ export default function App() {
                   <>
                     <CompanyOverview company={company} onViewDetails={() => setModal({ type: 'companyDetails' })} />
                     <CompletenessCard companyId={activeCompanyId} refreshKey={docRefreshKey} />
-                    <DirectorsPanel companyId={activeCompanyId} journeyStep={company.journeyStep} />
+                    <DirectorsPanel companyId={activeCompanyId} journeyStep={company.journeyStep} onCompanyUpdated={handleCompanyUpdated} />
                     <DocumentsPanel companyId={activeCompanyId} refreshKey={docRefreshKey} />
                     <RegistrationsTracker
                       registrations={registrations}
