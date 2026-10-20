@@ -14,10 +14,10 @@ def _sync_journey_step(company_id: int, db: Session) -> None:
         return
     count = db.query(Director).filter(Director.company_id == company_id).count()
     if count >= 2:
-        company.journey_step = max(company.journey_step, 2)
+        company.journey_step = max(company.journey_step, 3)
     else:
-        # Only drop back to 1 if still in the early steps (don't regress past step 2)
-        if company.journey_step <= 2:
+        # Drop back only if still in early steps
+        if company.journey_step <= 3:
             company.journey_step = 1
     db.commit()
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { FileText, Upload, Download, Trash2, AlertTriangle, Loader } from 'lucide-react'
-import { getDocuments, uploadDocument, downloadDocumentUrl, deleteDocument } from '../lib/api'
+import { getDocuments, uploadDocument, downloadDocumentUrl, deleteDocument, getCompany } from '../lib/api'
 
 const DOC_TYPE_OPTIONS = [
   { value: 'pan_card', label: 'PAN Card' },
@@ -148,7 +148,7 @@ function UploadDrawer({ companyId, onUploaded, onClose }) {
 
 const REQUIRED_DOC_TYPES = ['pan_card', 'aadhaar', 'address_proof']
 
-export default function DocumentsPanel({ companyId, refreshKey }) {
+export default function DocumentsPanel({ companyId, refreshKey, onCompanyUpdated }) {
   const [documents, setDocuments] = useState([])
   const [showUpload, setShowUpload] = useState(false)
   const [deleting, setDeleting] = useState(null)
@@ -161,9 +161,13 @@ export default function DocumentsPanel({ companyId, refreshKey }) {
       .catch(() => {})
   }, [companyId, refreshKey])
 
-  function handleUploaded(doc) {
+  async function handleUploaded(doc) {
     setDocuments((prev) => [doc, ...prev])
     setShowUpload(false)
+    try {
+      const updated = await getCompany(companyId)
+      onCompanyUpdated?.(updated)
+    } catch (_) {}
   }
 
   async function handleDelete(id) {

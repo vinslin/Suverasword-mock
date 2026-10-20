@@ -6,8 +6,25 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.models.company import Company
 from app.models.document import Document
 from app.schemas.document import DocumentOut
+
+DOCS_STEP4_REQUIRED = {"pan_card", "aadhaar", "address_proof", "noc"}
+
+
+def _sync_docs_journey_step(company_id: int, db: Session) -> None:
+    company = db.get(Company, company_id)
+    if company is None:
+        return
+    uploaded = {
+        d.doc_type
+        for d in db.query(Document.doc_type).filter(Document.company_id == company_id).all()
+        if d.doc_type
+    }
+    if DOCS_STEP4_REQUIRED.issubset(uploaded):
+        company.journey_step = max(company.journey_step, 5)
+        db.commit()
 
 UPLOADS_ROOT = Path(__file__).resolve().parents[3] / "uploads"
 
@@ -48,6 +65,7 @@ async def upload_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
+    _sync_docs_journey_step(company_id, db)
     return doc
 
 

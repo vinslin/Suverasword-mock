@@ -47,6 +47,10 @@ def update_company(company_id: int, payload: CompanyUpdateRequest, db: Session =
     if payload.pincode is not None:
         company.pincode = payload.pincode
 
+    # Auto-advance: address complete means step 3 DONE → move to step 4 (Documents Upload)
+    if all([company.street, company.city, company.state, company.pincode]):
+        company.journey_step = max(company.journey_step, 4)
+
     db.commit()
     db.refresh(company)
     return company

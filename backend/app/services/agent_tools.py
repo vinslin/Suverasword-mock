@@ -475,6 +475,9 @@ def tool_update_company_details(
         company.paid_up_capital = paid_up_capital
     if incorporation_date is not None:
         company.incorporation_date = incorporation_date
+    # Auto-advance: address complete means step 3 DONE → move to step 4 (Documents Upload)
+    if all([company.street, company.city, company.state, company.pincode]):
+        company.journey_step = max(company.journey_step, 4)
     db.commit()
     db.refresh(company)
     return {
@@ -488,6 +491,7 @@ def tool_update_company_details(
         "incorporationState": company.incorporation_state,
         "authorizedCapital": company.authorized_capital,
         "paidUpCapital": company.paid_up_capital,
+        "journeyStep": company.journey_step,
     }
 
 
