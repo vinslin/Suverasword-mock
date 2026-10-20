@@ -222,14 +222,14 @@ def build_tool_schemas(db: Session, company_id: int) -> list[dict]:
             "function": {
                 "name": "advance_journey_step",
                 "description": (
-                    "Move the Registration Journey stepper forward to reflect actual progress "
-                    "in this conversation. Steps: 1=Choose Structure & Name, 2=Directors "
-                    "Information, 3=Registered Office Details, 4=Documents Upload, 5=Review & "
-                    "Sign, 6=MCA Application, 7=Post Incorporation Registrations, 8=Compliance & "
-                    f"Next Steps. The company is currently on step {current_step}. This only "
-                    "moves forward (never backward) — call it with the step number that matches "
-                    "what's just been completed, e.g. call with 4 right after reserving a "
-                    "company name, or with 5 once office details and documents are settled."
+                    "Move the Registration Journey stepper to the NEXT step after completing work. "
+                    "Steps: 1=Choose Structure & Name, 2=Directors Information, 3=Registered "
+                    "Office Details, 4=Documents Upload, 5=Review & Sign, 6=MCA Application, "
+                    "7=Post Incorporation Registrations, 8=Compliance & Next Steps. "
+                    f"The company is currently on step {current_step}. "
+                    "IMPORTANT: pass the step AFTER the one just completed — e.g. if the user "
+                    "just finished Directors (step 2), call with step=3; if they finished Review & "
+                    "Sign (step 5), call with step=6. This only moves forward (never backward)."
                 ),
                 "parameters": {
                     "type": "object",
