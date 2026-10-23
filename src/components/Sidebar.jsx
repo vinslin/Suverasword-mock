@@ -4,6 +4,7 @@ import {
   MessageSquare,
   Building2,
   FileText,
+  FilePen,
   Calendar,
   BookOpen,
   Calculator,
@@ -16,6 +17,7 @@ const navItems = [
   { id: 'assistant', label: 'AI Assistant', icon: MessageSquare },
   { id: 'companies', label: 'My Companies', icon: Building2 },
   { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'docgen', label: 'Legal Drafts', icon: FilePen },
 ]
 
 const bottomNavItems = [

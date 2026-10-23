@@ -51,6 +51,13 @@ export function getNotifications(companyId) {
   return request(`/companies/${companyId}/notifications`)
 }
 
+export function generateDocument(companyId, docType) {
+  return request(`/companies/${companyId}/generate-document`, {
+    method: 'POST',
+    body: JSON.stringify({ doc_type: docType }),
+  })
+}
+
 export function updateCompany(companyId, payload) {
   return request(`/companies/${companyId}`, { method: 'PUT', body: JSON.stringify(payload) })
 }

@@ -32,6 +32,7 @@ import DocumentsPanel from './components/DocumentsPanel'
 import CompletenessCard from './components/CompletenessCard'
 import MyCompaniesPage from './components/MyCompaniesPage'
 import HomeDashboardPage from './components/HomeDashboardPage'
+import DocumentGenerationPage from './components/DocumentGenerationPage'
 import {
   listCompanies,
   createCompany,
@@ -304,6 +305,7 @@ export default function App() {
             activeNav === 'assistant'  ? 'AI Assistant' :
             activeNav === 'companies'  ? 'My Companies' :
             activeNav === 'documents'  ? 'Documents' :
+            activeNav === 'docgen'     ? 'Legal Drafts' :
             activeNav === 'calendar'   ? 'Compliance Calendar' :
             activeNav === 'policies'   ? 'Policies & Legal' :
             activeNav === 'cost'       ? 'Cost Estimator' :
@@ -392,6 +394,8 @@ export default function App() {
           />
         ) : activeNav === 'documents' ? (
           <DocumentsPage companyId={activeCompanyId} />
+        ) : activeNav === 'docgen' ? (
+          <DocumentGenerationPage company={company} companyId={activeCompanyId} />
         ) : activeNav === 'cost' ? (
           <CostEstimatorPage companyId={activeCompanyId} />
         ) : activeNav === 'calendar' ? (
