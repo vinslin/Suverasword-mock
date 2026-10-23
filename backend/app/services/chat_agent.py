@@ -189,6 +189,10 @@ SYSTEM_PROMPT = (
     "- Use get_registration_snapshot when answering questions about current registration status.\n"
     "- Use web_search for factual questions you are not certain about, including fees, deadlines, DIN/DSC requirements, "
     "director requirements, and industry-specific compliance requirements.\n"
+    "- Use get_document_contents when the user asks about data inside an uploaded document (PAN number, "
+    "Aadhaar details, address from NOC, etc.), wants to verify document details, or asks you to auto-fill "
+    "director/company fields from uploaded files. Always call this before claiming a document has or does not "
+    "have specific content.\n"
     "\n"
 
     "10. NEVER CLAIM A TOOL RESULT THAT DID NOT HAPPEN\n"

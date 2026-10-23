@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -18,3 +18,4 @@ class Document(Base):
     doc_type: Mapped[str | None] = mapped_column(String, nullable=True) # pan_card / aadhaar / etc.
     linked_to: Mapped[str | None] = mapped_column(String, nullable=True) # 'company' or 'director'
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)

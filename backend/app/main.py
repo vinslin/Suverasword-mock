@@ -30,7 +30,13 @@ app.include_router(chat.router, prefix="/api")
 
 
 def _apply_light_migrations() -> None:
+    # SQLite: add new columns with try/except (IF NOT EXISTS not supported for ADD COLUMN in old SQLite)
     if settings.database_url.startswith("sqlite"):
+        with engine.begin() as conn:
+            try:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN extracted_text TEXT"))
+            except Exception:
+                pass  # column already exists
         return
     with engine.begin() as conn:
         # Add journey_step column if missing (pre-existing installs)
@@ -54,6 +60,9 @@ def _apply_light_migrations() -> None:
         )
         conn.execute(
             text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS incorporation_date VARCHAR")
+        )
+        conn.execute(
+            text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS extracted_text TEXT")
         )
 
 

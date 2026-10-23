@@ -322,6 +322,29 @@ def build_tool_schemas(db: Session, company_id: int) -> list[dict]:
                 "parameters": {"type": "object", "properties": {}},
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_document_contents",
+                "description": (
+                    "Read the OCR-extracted text from uploaded documents for this company. "
+                    "Use this when the user asks about what's written in a document, wants to "
+                    "verify data from a PAN card / Aadhaar / NOC / address proof, or asks you "
+                    "to auto-fill details from a document. Pass doc_type to get a specific "
+                    "document ('pan_card', 'aadhaar', 'address_proof', 'noc') or omit it to "
+                    "get a summary of all uploaded documents."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "doc_type": {
+                            "type": "string",
+                            "description": "Optional — filter to one doc type: pan_card, aadhaar, address_proof, noc",
+                        }
+                    },
+                },
+            },
+        },
     ]
 
 
@@ -769,6 +792,29 @@ def tool_get_completeness_score(db: Session, company_id: int) -> dict:
     }
 
 
+def tool_get_document_contents(db: Session, company_id: int, doc_type: str | None = None) -> dict:
+    _company(db, company_id)
+    query = db.query(Document).filter(Document.company_id == company_id)
+    if doc_type:
+        query = query.filter(Document.doc_type == doc_type)
+    docs = query.order_by(Document.uploaded_at.desc()).all()
+
+    if not docs:
+        return {"found": False, "message": "No documents uploaded yet for this company."}
+
+    results = []
+    for d in docs:
+        results.append({
+            "docType": d.doc_type or "unknown",
+            "originalName": d.original_name,
+            "hasExtractedText": bool(d.extracted_text),
+            "extractedText": (d.extracted_text[:2000] if d.extracted_text else
+                              "No text extracted — file may be a low-quality scan or unreadable."),
+        })
+
+    return {"found": True, "documents": results, "count": len(results)}
+
+
 TOOL_IMPLEMENTATIONS = {
     "web_search": tool_web_search,
     "check_company_name_availability": tool_check_company_name_availability,
@@ -784,4 +830,5 @@ TOOL_IMPLEMENTATIONS = {
     "validate_director_requirements": tool_validate_director_requirements,
     "get_documents_snapshot": tool_get_documents_snapshot,
     "get_completeness_score": tool_get_completeness_score,
+    "get_document_contents": tool_get_document_contents,
 }

@@ -9,6 +9,7 @@ from app.database.session import get_db
 from app.models.company import Company
 from app.models.document import Document
 from app.schemas.document import DocumentOut
+from app.services.ocr import extract_text
 
 DOCS_STEP4_REQUIRED = {"pan_card", "aadhaar", "address_proof", "noc"}
 
@@ -53,6 +54,8 @@ async def upload_document(
     content = await file.read()
     dest.write_bytes(content)
 
+    extracted = extract_text(content, file.filename or stored_name)
+
     doc = Document(
         company_id=company_id,
         director_id=director_id,
@@ -61,6 +64,7 @@ async def upload_document(
         file_path=str(dest),
         doc_type=doc_type,
         linked_to=linked_to,
+        extracted_text=extracted or None,
     )
     db.add(doc)
     db.commit()
