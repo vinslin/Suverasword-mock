@@ -4,9 +4,111 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models.chat_message import ChatMessage
+from app.models.company import Company
+from app.models.director import Director
+from app.models.document import Document
+from app.models.registration import Registration
 from app.services.agent_tools import TOOL_IMPLEMENTATIONS, build_tool_schemas
 from app.services.openai_client import chat_completion
 from app.services.agent_tools import tool_get_registration_snapshot
+
+_STEP_LABELS = {
+    1: "Choose Structure & Name",
+    2: "Directors Information",
+    3: "Registered Office Details",
+    4: "Documents Upload",
+    5: "Review & Sign",
+    6: "MCA Application",
+    7: "Post-Incorporation Registrations",
+    8: "Compliance & Next Steps (Done)",
+}
+
+_REQUIRED_DOCS = {"pan_card", "aadhaar", "address_proof", "noc"}
+
+
+def _fmt_capital(amount: int | None) -> str:
+    if not amount:
+        return "Not set"
+    if amount >= 10_000_000:
+        return f"Rs. {amount // 10_000_000} Cr"
+    if amount >= 100_000:
+        return f"Rs. {amount // 100_000} L"
+    return f"Rs. {amount:,}"
+
+
+def build_context_block(db: Session, company_id: int) -> str:
+    """Build a live snapshot of the company's state to inject into the system prompt."""
+    company = db.get(Company, company_id)
+    if company is None:
+        return "=== NO COMPANY FOUND FOR THIS SESSION ===\n"
+
+    directors = db.query(Director).filter(Director.company_id == company_id).all()
+    documents = db.query(Document).filter(Document.company_id == company_id).all()
+    registrations = (
+        db.query(Registration)
+        .filter(Registration.company_id == company_id)
+        .order_by(Registration.sort_order)
+        .all()
+    )
+
+    step = company.journey_step or 1
+    step_label = _STEP_LABELS.get(step, f"Step {step}")
+    address = ", ".join(
+        p for p in [company.street, company.city, company.state, company.pincode] if p
+    ) or company.registered_office or "Not set"
+
+    lines = [
+        "=== LIVE COMPANY STATE (refreshed this turn — use this before calling lookup tools) ===",
+        "",
+        f"Company   : {company.name or 'Unnamed'}",
+        f"Type      : {company.type or 'Not set'}",
+        f"Activity  : {company.business_activity or 'Not set'}",
+        f"NIC Code  : {company.nic_code or 'Not set'}",
+        f"Address   : {address}",
+        f"Capital   : Authorized {_fmt_capital(company.authorized_capital)} | "
+        f"Paid-up {_fmt_capital(company.paid_up_capital)}",
+        f"Journey   : Step {step} of 8 — {step_label}",
+        "",
+    ]
+
+    # Directors
+    if directors:
+        lines.append(f"Directors ({len(directors)}):")
+        for d in directors:
+            parts = [f"  {d.name}"]
+            if d.din:   parts.append(f"DIN: {d.din}")
+            if d.pan:   parts.append(f"PAN: {d.pan}")
+            if d.role:  parts.append(f"Role: {d.role}")
+            if d.shareholding_pct:
+                parts.append(f"Shareholding: {d.shareholding_pct}%")
+            lines.append(" | ".join(parts))
+    else:
+        lines.append("Directors : None added yet")
+    lines.append("")
+
+    # Documents
+    uploaded_types = {d.doc_type for d in documents if d.doc_type}
+    missing_docs = _REQUIRED_DOCS - uploaded_types
+    lines.append(f"Documents uploaded ({len(documents)}):")
+    if uploaded_types:
+        lines.append(f"  Have    : {', '.join(sorted(uploaded_types))}")
+    if missing_docs:
+        lines.append(f"  Missing : {', '.join(sorted(missing_docs))}")
+    if not documents:
+        lines.append("  None uploaded yet")
+    lines.append("")
+
+    # Registrations
+    if registrations:
+        lines.append(f"Registrations ({len(registrations)}):")
+        for r in registrations:
+            lines.append(f"  {r.name} — {r.status}")
+    else:
+        lines.append("Registrations : None yet")
+    lines.append("")
+
+    lines.append("=== END STATE — answer from this context first; call tools only for actions or missing data ===")
+    return "\n".join(lines)
 
 MAX_TOOL_ITERATIONS = 8
 HISTORY_WINDOW = 20
@@ -280,7 +382,8 @@ def run_agent_turn(db: Session, company_id: int, user_text: str) -> dict:
         .limit(HISTORY_WINDOW)
         .all()
     )
-    messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    context_block = build_context_block(db, company_id)
+    messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context_block}]
     for row in reversed(history_rows):
         role = "assistant" if row.sender == "bot" else "user"
         messages.append({"role": role, "content": row.text or ""})
