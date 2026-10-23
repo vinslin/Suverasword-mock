@@ -1,8 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { Globe, Download, Bell, ChevronDown } from 'lucide-react'
-import { notifications } from '../data/mockData'
+import { Globe, Download, Bell, ChevronDown, AlertCircle, Info, CheckCircle2, AlertTriangle } from 'lucide-react'
 
-export default function TopBar({ title, subtitle, onDownloadGuide, user }) {
+const TYPE_META = {
+  critical: { icon: AlertCircle,   dot: 'bg-red-500',    icon_cls: 'text-red-500'    },
+  warning:  { icon: AlertTriangle, dot: 'bg-amber-500',  icon_cls: 'text-amber-500'  },
+  info:     { icon: Info,          dot: 'bg-blue-500',   icon_cls: 'text-blue-500'   },
+  success:  { icon: CheckCircle2,  dot: 'bg-emerald-500',icon_cls: 'text-emerald-500'},
+}
+
+export default function TopBar({ title, subtitle, onDownloadGuide, user, notifications = [] }) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
   const notifRef = useRef(null)
@@ -47,22 +53,45 @@ export default function TopBar({ title, subtitle, onDownloadGuide, user }) {
             className="relative w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"
           >
             <Bell size={17} />
-            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-semibold rounded-full w-4.5 h-4.5 min-w-[18px] h-[18px] flex items-center justify-center">
-              {notifications.length}
-            </span>
+            {notifications.length > 0 && (
+              <span className={`absolute -top-1.5 -right-1.5 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 ${
+                notifications.some(n => n.type === 'critical') ? 'bg-red-500' :
+                notifications.some(n => n.type === 'warning')  ? 'bg-amber-500' : 'bg-blue-500'
+              }`}>
+                {notifications.length}
+              </span>
+            )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20">
-              <div className="px-4 py-2 text-sm font-semibold text-gray-900 border-b border-gray-100">
-                Notifications
+            <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-100 z-20 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-[13.5px] font-semibold text-gray-900">Notifications</span>
+                {notifications.length > 0 && (
+                  <span className="text-[11px] text-gray-400">{notifications.length} alert{notifications.length > 1 ? 's' : ''}</span>
+                )}
               </div>
-              {notifications.map((n) => (
-                <div key={n.id} className="px-4 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                  <div className="text-[13px] font-medium text-gray-800">{n.title}</div>
-                  <div className="text-[12px] text-gray-500 mt-0.5">{n.body}</div>
-                  <div className="text-[11px] text-gray-400 mt-1">{n.time}</div>
-                </div>
-              ))}
+              <div className="max-h-[420px] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-[13px] text-gray-400">
+                    All clear — no alerts right now.
+                  </div>
+                ) : (
+                  notifications.map((n) => {
+                    const meta = TYPE_META[n.type] ?? TYPE_META.info
+                    const Icon = meta.icon
+                    return (
+                      <div key={n.id} className="flex gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                        <Icon size={16} className={`shrink-0 mt-0.5 ${meta.icon_cls}`} />
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-medium text-gray-800 leading-snug">{n.title}</div>
+                          <div className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">{n.body}</div>
+                          <div className="text-[11px] text-gray-400 mt-1">{n.time}</div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
           )}
         </div>

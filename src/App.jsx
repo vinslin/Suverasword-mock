@@ -40,6 +40,7 @@ import {
   advanceRegistration,
   updateCompany,
 } from './lib/api'
+import { useNotifications } from './lib/useNotifications'
 
 const statusMeta = {
   Completed: { icon: CheckCircle2, className: 'text-emerald-500' },
@@ -107,6 +108,8 @@ export default function App() {
   const [company, setCompany] = useState(null)
   const [companyChecked, setCompanyChecked] = useState(false)
   const [loadError, setLoadError] = useState(null)
+
+  const notifications = useNotifications(company, registrations, activeCompanyId)
 
   const [lastUpdated, setLastUpdated] = useState('15 May 2024 · 10:04 AM')
   const [refreshing, setRefreshing] = useState(false)
@@ -309,6 +312,7 @@ export default function App() {
           subtitle={activeNav === 'assistant' ? 'Online' : company?.name ?? 'SuveraSword'}
           onDownloadGuide={handleDownloadGuide}
           user={user}
+          notifications={notifications}
         />
 
         {activeNav === 'assistant' ? (
